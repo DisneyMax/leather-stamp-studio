@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Leather Stamp Studio V2.7 — SVG to STL</title>
+<style>
+:root{font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;color:#e9edf2;background:#10151c}*{box-sizing:border-box}body{margin:0}header{padding:19px 26px;border-bottom:1px solid #303945;display:flex;justify-content:space-between;gap:12px;align-items:center}h1{font-size:21px;margin:0}small,.muted{color:#9eacbc}main{display:grid;grid-template-columns:350px 1fr;min-height:calc(100vh - 72px)}aside{padding:22px;border-right:1px solid #303945;overflow:auto;max-height:calc(100vh - 72px)}section{margin-bottom:22px}h2{font-size:13px;letter-spacing:.09em;text-transform:uppercase;color:#b6c2d0;margin:0 0 12px}label{font-size:13px;display:block;margin-bottom:6px}.field{margin:0 0 13px}.pair{display:grid;grid-template-columns:1fr 1fr;gap:10px}input[type=number],select,input[type=file]{width:100%;padding:10px;background:#1b2430;border:1px solid #394655;border-radius:8px;color:#f2f4f7;font-size:14px}input[type=file]{font-size:12px}input[type=checkbox]{accent-color:#d4a66d}button{background:#d9a76b;color:#1c1711;border:0;padding:12px 15px;border-radius:8px;font-weight:700;cursor:pointer}button.secondary{background:#273342;color:#e8edf3}button:disabled{opacity:.45;cursor:not-allowed}.buttons{display:flex;gap:9px;flex-wrap:wrap}.check{display:flex;gap:8px;align-items:center;margin:10px 0}.check label{margin:0}.hint{font-size:12px;color:#9eacbc;line-height:1.55}#stage{position:relative;min-height:550px}#viewport{position:absolute;inset:0}#overlay{position:absolute;left:18px;top:17px;pointer-events:none;background:#151c25d9;border:1px solid #334051;padding:11px 14px;border-radius:9px;font-size:12px;line-height:1.7}#status{position:absolute;bottom:18px;left:18px;right:18px;max-width:750px;background:#1d2936e8;border:1px solid #3a4958;border-radius:9px;padding:12px 15px;font-size:13px;white-space:pre-wrap;line-height:1.5}.good{color:#9cdbb0}.bad{color:#ffb0a4}.footer{padding:12px 22px;border-top:1px solid #303945;color:#9eacbc;font-size:12px}@media(max-width:850px){main{display:block}aside{max-height:none;border-right:0;border-bottom:1px solid #303945}#stage{height:65vh;min-height:430px}}
+</style>
+<script type="importmap">{"imports":{"three":"https://esm.sh/three@0.180.0","three/addons/":"https://esm.sh/three@0.180.0/examples/jsm/","three-bvh-csg":"https://esm.sh/three-bvh-csg@0.0.17?external=three,three-mesh-bvh","three-mesh-bvh":"https://esm.sh/three-mesh-bvh@0.9.2?external=three"}}</script>
+<script src="https://cdn.jsdelivr.net/npm/clipper-lib@6.4.2/clipper.js"></script>
+</head><body><header><div><h1>Leather Stamp Studio <small> / V2.7</small></h1><small>SVG → printable STL · designed for leather embossing dies</small></div><small>Browser-based · mm</small></header><main><aside>
+<section><h2>01 / Artwork</h2><div class="field"><label for="file">Import SVG</label><input id="file" type="file" accept=".svg,image/svg+xml"></div><div class="buttons"><button class="secondary" id="demo">Load paw-print artwork</button></div><p class="hint">Filled vector paths work best. Convert text and strokes to outlines in your SVG editor. Artwork is automatically scaled to fit the base with the selected margin.</p></section>
+<section><h2>02 / Impression</h2><div class="field"><label for="mode">Stamp geometry</label><select id="mode"><option value="raised">Raised artwork → recessed leather impression</option><option value="recessed">Recessed artwork → raised leather impression*</option></select></div><div class="check"><input id="mirror" type="checkbox" checked><label for="mirror">Mirror artwork (recommended for stamping)</label></div><p class="hint">*A recessed die alone may not produce a raised leather impression; a matching male die or suitable backing is usually needed.</p></section>
+<section><h2>03 / Dimensions</h2><div class="pair"><div class="field"><label for="width">Base width (mm)</label><input id="width" type="number" min="10" max="200" step="1" value="40"></div><div class="field"><label for="height">Base height (mm)</label><input id="height" type="number" min="10" max="200" step="1" value="40"></div><div class="field"><label for="base">Base thickness (mm)</label><input id="base" type="number" min="2" max="25" step="0.5" value="6"></div><div class="field"><label for="depth">Relief / cavity depth (mm)</label><input id="depth" type="number" min="0.2" max="5" step="0.1" value="1.5"></div><div class="field"><label for="margin">Artwork margin (mm)</label><input id="margin" type="number" min="0.5" max="30" step="0.5" value="4"></div><div class="field"><label for="curve">Curve detail (legacy setting)</label><input id="curve" type="number" min="3" max="128" step="1" value="64"></div></div><div class="field"><label for="tolerance">Curve accuracy (mm; smaller = smoother)</label><input id="tolerance" type="number" min="0.005" max="0.3" step="0.005" value="0.035"></div><p class="hint">V2.7 uses geometric accuracy rather than fixed segment counts for artwork. Curve detail is retained for older project compatibility and base outlines.</p></section>
+<section><h2>04 / Base & edge profile</h2>
+<div class="field"><label for="baseShape">Base shape</label><select id="baseShape"><option value="rect">Rectangle</option><option value="roundrect">Rounded rectangle</option><option value="circle">Circle / ellipse</option><option value="contour">SVG contour (convex silhouette)</option></select></div>
+<div class="field"><label for="corner">Corner radius (mm)</label><input id="corner" type="number" min="0" max="40" step="0.5" value="5"></div>
+<div class="field"><label for="edge">Artwork edge profile</label><select id="edge"><option value="sharp">Sharp</option><option value="chamfer" selected>Chamfered</option><option value="round">Rounded (multi-ring)</option></select></div>
+<div class="field"><label for="bevel">Edge size (mm)</label><input id="bevel" type="number" min="0" max="2" step="0.05" value="0.25"></div>
+<div class="field"><label for="simplify">SVG simplification (mm)</label><input id="simplify" type="number" min="0" max="0.5" step="0.01" value="0.02"></div><p class="hint">Effective contour tolerance is the larger of Curve accuracy and SVG simplification. Set simplification to 0 to preserve maximum detail allowed by Curve accuracy.</p><p class="hint">Contour uses a single convex silhouette around the artwork, connecting disconnected islands. It is not a tight concave outline. Bevel size is clamped to fit relief depth. Rounded uses eight progressive contour bands; chamfer uses six. V2.7 may reduce the entire bevel width to find a valid mesh; it does not yet vary width locally. Actual applied width is reported.</p></section>
+<section><h2>05 / Projects</h2><div class="buttons"><button class="secondary" id="save">Save project JSON</button><button class="secondary" id="load">Load project JSON</button><input type="file" id="projectFile" accept=".json,application/json" hidden></div><p class="hint">Project JSON includes SVG artwork and all settings; no server is used.</p></section>
+<section><h2>06 / Generate</h2><div class="buttons"><button id="build">Generate 3D stamp</button><button class="secondary" id="export" disabled>Export STL</button></div><p class="hint">V2.7 performs basic triangle, edge-manifold and degenerate-face checks. Warnings are not a guarantee of slicer compatibility. STL is unitless; import into Bambu Studio as millimeters.</p></section>
+</aside><div id="stage"><div id="viewport"></div><div id="overlay"><b>3D preview</b><br>Drag to rotate · Scroll to zoom<br>Right-drag to pan</div><div id="status">Loading 3D libraries… Internet access is required when opening this HTML file.</div></div></main><div class="footer">V2.7 experimental adaptive-width fallback: test with a small leather offcut first. Keep printed stamp faces smooth and avoid excessive pressure on wet leather.</div>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {SVGLoader} from 'three/addons/loaders/SVGLoader.js';
+import {STLExporter} from 'three/addons/exporters/STLExporter.js';
+import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
+import {Brush, Evaluator, ADDITION, SUBTRACTION} from 'three-bvh-csg';
+const $=id=>document.getElementById(id), status=$('status');
+const sample="<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<svg id=\"Layer_1\" data-name=\"Layer 1\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 788.67 741.6\">\n  <path d=\"M385.61,303.29c90.16-6.95,119.56,74.62,167.01,130.25,32.08,37.62,75.89,66.2,99.76,110.36,59.06,109.23-23.17,224.62-145.7,192-46.75-12.45-74.77-32.92-127.41-29.39-36.32,2.44-70.22,23.51-105.23,31.29-115.91,25.75-193.26-83.78-141.26-187.56,21.76-43.42,60.6-69.09,92.23-103.64,48.92-53.45,77-136.86,160.6-143.3Z\"/>\n  <path d=\"M245.53.57c120.87-13.01,174.39,198.98,76.58,258.21-68.82,41.67-132.65-33.43-149.34-94.74-15.86-58.26-1.39-155.49,72.76-163.47Z\"/>\n  <path d=\"M520.94.57c90.1-9.2,114.51,95.52,94.88,164.92-17.28,61.08-83.19,135.55-151.05,92.37C375.97,201.36,417.52,11.13,520.94.57Z\"/>\n  <path d=\"M68.65,198.82c95.67-9.54,167.1,137.13,105.93,209.21-54.79,64.56-137.52.65-162.87-59.18-23.21-54.76-15.66-142.78,56.94-150.03Z\"/>\n  <path d=\"M702.57,198.83c77.08-7.02,98.02,72.26,80.09,133.51-17.63,60.22-93.81,135-156.89,87.41-76.63-57.82-15.65-212.5,76.8-220.92Z\"/>\n</svg>";
+let svgText=sample, finalMesh=null, scene, camera, renderer, controls, modelGroup;
+try{
+scene=new THREE.Scene();scene.background=new THREE.Color('#151e28');
+camera=new THREE.PerspectiveCamera(40,1,.1,2000);camera.position.set(75,-85,95);
+renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));renderer.outputColorSpace=THREE.SRGBColorSpace;$('viewport').appendChild(renderer.domElement);
+controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.target.set(0,0,5);
+scene.add(new THREE.HemisphereLight(0xffffff,0x546173,2.2));const light=new THREE.DirectionalLight(0xffffff,2.7);light.position.set(40,-30,80);scene.add(light);
+const grid=new THREE.GridHelper(250,25,0x415268,0x2a3746);grid.rotation.x=Math.PI/2;grid.position.z=-.12;scene.add(grid);
+modelGroup=new THREE.Group();scene.add(modelGroup);
+function resize(){const box=$('viewport').getBoundingClientRect();camera.aspect=box.width/Math.max(1,box.height);camera.updateProjectionMatrix();renderer.setSize(box.width,box.height,false)}window.addEventListener('resize',resize);resize();
+function animate(){requestAnimationFrame(animate);controls.update();renderer.render(scene,camera)}animate();
+status.textContent='Ready. Sample artwork loaded; click Generate 3D stamp.';
+}catch(e){status.textContent='Unable to initialize 3D preview: '+e.message;status.className='bad';throw e}
+$('file').addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;svgText=await f.text();status.textContent=`Loaded ${f.name}. Click Generate 3D stamp.`;$('export').disabled=true});
+$('demo').onclick=()=>{svgText=sample;$('file').value='';status.textContent='Paw print loaded. Click Generate 3D stamp.';$('export').disabled=true};
+function getNumber(id){const n=Number($(id).value);if(!Number.isFinite(n))throw Error('Invalid value for '+id);return n}
+function validateSvg(text){const doc=new DOMParser().parseFromString(text,'image/svg+xml');if(doc.querySelector('parsererror')||doc.documentElement.localName!=='svg')throw Error('Invalid SVG file');if(doc.querySelector('script,foreignObject,image,use,filter'))throw Error('For this POC, convert SVG to plain filled paths; external images, symbols, filters and scripts are not supported.');return doc}
+// Preserve compound-path topology: holes, nested islands, and letter counters.
+// SVGLoader.createShapes can misclassify nested subpaths in Illustrator compound paths.
+function normalizeShapes(text){
+ validateSvg(text);
+ if(!window.ClipperLib)throw Error('The polygon library could not load. Connect to the internet and reopen this HTML file.');
+ const loader=new SVGLoader(),data=loader.parse(text),C=window.ClipperLib,scale=1000;
+ const shapes=[];
+ for(const path of data.paths){
+  const style=path.userData?.style||{};
+  if(style.display==='none'||style.visibility==='hidden'||style.fill==='none')continue;
+  const loops=[];
+  for(const sub of path.subPaths){
+   const pts=sub.getPoints(48),loop=[];
+   for(const p of pts){const q={X:Math.round(p.x*scale),Y:Math.round(p.y*scale)};
+    if(!loop.length||loop[loop.length-1].X!==q.X||loop[loop.length-1].Y!==q.Y)loop.push(q);
+   }
+   if(loop.length>1&&loop[0].X===loop[loop.length-1].X&&loop[0].Y===loop[loop.length-1].Y)loop.pop();
+   if(loop.length>=3)loops.push(loop);
+  }
+  if(!loops.length)continue;
+  const clipper=new C.Clipper();clipper.StrictlySimple=true;
+  clipper.AddPaths(loops,C.PolyType.ptSubject,true);
+  const tree=new C.PolyTree();
+  const fill=(style.fillRule||style['fill-rule']||'nonzero').toLowerCase()==='evenodd'?C.PolyFillType.pftEvenOdd:C.PolyFillType.pftNonZero;
+  if(!clipper.Execute(C.ClipType.ctUnion,tree,fill,fill))throw Error('Could not resolve compound SVG path');
+  const makePath=(poly,shape)=>{if(poly.length<3)return;const pts=poly.map(q=>new THREE.Vector2(q.X/scale,q.Y/scale));
+   const target=shape?new THREE.Path(pts):new THREE.Shape(pts);return target};
+  function visit(node){
+   for(const child of node.Childs()){
+    if(!child.IsHole()){
+     const shape=makePath(child.Contour());if(!shape)continue;
+     for(const hole of child.Childs())if(hole.IsHole()){
+      const h=makePath(hole.Contour(),true);if(h)shape.holes.push(h);
+      for(const island of hole.Childs())visitIsland(island);
+     }
+     shapes.push(shape);
+    }else for(const inner of child.Childs())visitIsland(inner);
+   }
+  }
+  function visitIsland(node){if(node.IsHole())return;const shape=makePath(node.Contour());if(!shape)return;
+   for(const hole of node.Childs())if(hole.IsHole()){
+    const h=makePath(hole.Contour(),true);if(h)shape.holes.push(h);
+    for(const island of hole.Childs())visitIsland(island);
+   }
+   shapes.push(shape);
+  }
+  visit(tree);
+ }
+ if(!shapes.length)throw Error('No filled shapes found. Convert text and strokes to outlines.');
+ return shapes;
+}
+function getArtwork(shapes,w,h,margin,mirror,curve){
+ const pts=[];for(const shape of shapes){const a=shape.extractPoints(curve);pts.push(...a.shape);for(const hole of a.holes)pts.push(...hole)}
+ if(!pts.length)throw Error('Artwork has no usable points');let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+ for(const p of pts){minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y)}
+ const dx=maxX-minX,dy=maxY-minY;if(dx<1e-8||dy<1e-8)throw Error('Artwork has zero size');
+ const availW=w-2*margin,availH=h-2*margin;if(availW<=0||availH<=0)throw Error('Artwork margin exceeds base size');
+ const scale=Math.min(availW/dx,availH/dy),cx=(minX+maxX)/2,cy=(minY+maxY)/2;
+ const transformed=[];for(const shape of shapes){const clone=shape.clone();const change=path=>{for(const c of path.curves){for(const name of ['v0','v1','v2','v3']){const p=c[name];if(p?.isVector2){p.x=(p.x-cx)*scale*(mirror?-1:1);p.y=-(p.y-cy)*scale}}}};change(clone);for(const hole of clone.holes)change(hole);transformed.push(clone)}
+ const points=pts.map(p=>new THREE.Vector2((p.x-cx)*scale*(mirror?-1:1),-(p.y-cy)*scale));return {transformed,points};
+}
+function simplifyPolyline(pts,tol){
+ if(pts.length<5||tol<=0)return pts;
+ const a=pts.slice();if(a[0].distanceToSquared(a[a.length-1])<1e-12)a.pop();
+ const keep=new Uint8Array(a.length);keep[0]=1;keep[a.length-1]=1;
+ const stack=[[0,a.length-1]],t2=tol*tol;
+ while(stack.length){const [lo,hi]=stack.pop();const p=a[lo],q=a[hi],dx=q.x-p.x,dy=q.y-p.y,len=dx*dx+dy*dy;let max=0,idx=-1;
+ for(let i=lo+1;i<hi;i++){let t=len?Math.max(0,Math.min(1,((a[i].x-p.x)*dx+(a[i].y-p.y)*dy)/len)):0;const ex=a[i].x-p.x-t*dx,ey=a[i].y-p.y-t*dy,d=ex*ex+ey*ey;if(d>max){max=d;idx=i}}
+ if(max>t2&&idx>=0){keep[idx]=1;stack.push([lo,idx],[idx,hi])}}
+ return a.filter((_,i)=>keep[i]);
+}
+function optimizeShapes(shapes,curve,tolerance){
+ let result=[],vertices=0;
+ for(const shape of shapes){
+  const p=shape.extractPoints(1);
+  const outer=simplifyPolyline(p.shape,tolerance);if(outer.length<3)continue;
+  const s=new THREE.Shape(outer);s.holes=[];
+  for(const h of p.holes){const pts=simplifyPolyline(h,tolerance);if(pts.length>=3)s.holes.push(new THREE.Path(pts))}
+  vertices+=outer.length+s.holes.reduce((n,h)=>n+h.curves.length,0);result.push(s);
+ }
+ if(vertices>18000)throw Error(`Artwork still has ${vertices.toLocaleString()} outline vertices. Increase SVG simplification to 0.15–0.25 mm or simplify the SVG in a vector editor.`);
+ if(result.length>250)throw Error(`Artwork contains ${result.length} shapes; simplify or combine artwork before generating.`);
+ if(!result.length)throw Error('No usable filled shapes after simplification.');
+ return {shapes:result,vertices};
+}
+function hull(points){const a=points.map(p=>({x:p.x,y:p.y})).sort((p,q)=>p.x-q.x||p.y-q.y),cross=(o,p,q)=>(p.x-o.x)*(q.y-o.y)-(p.y-o.y)*(q.x-o.x);const lo=[],hi=[];for(const p of a){while(lo.length>=2&&cross(lo.at(-2),lo.at(-1),p)<=0)lo.pop();lo.push(p)}for(let i=a.length-1;i>=0;i--){const p=a[i];while(hi.length>=2&&cross(hi.at(-2),hi.at(-1),p)<=0)hi.pop();hi.push(p)}lo.pop();hi.pop();return lo.concat(hi)}
+function baseOutline(kind,w,h,corner,points,margin){let s=new THREE.Shape();if(kind==='rect'){s.moveTo(-w/2,-h/2);s.lineTo(w/2,-h/2);s.lineTo(w/2,h/2);s.lineTo(-w/2,h/2);s.closePath()}
+ else if(kind==='roundrect'){const r=Math.max(0,Math.min(corner,w/2,h/2));s.moveTo(-w/2+r,-h/2);s.lineTo(w/2-r,-h/2);s.quadraticCurveTo(w/2,-h/2,w/2,-h/2+r);s.lineTo(w/2,h/2-r);s.quadraticCurveTo(w/2,h/2,w/2-r,h/2);s.lineTo(-w/2+r,h/2);s.quadraticCurveTo(-w/2,h/2,-w/2,h/2-r);s.lineTo(-w/2,-h/2+r);s.quadraticCurveTo(-w/2,-h/2,-w/2+r,-h/2);s.closePath()}
+ else if(kind==='circle'){s.absellipse(0,0,w/2,h/2,0,Math.PI*2,false,0)}
+ else {const hp=hull(points);if(hp.length<3)throw Error('Contour needs at least three noncollinear points');
+ // Outward convex polygon offset by margin, using intersections of adjacent offset lines.
+ const poly=[];for(let i=0;i<hp.length;i++){const prev=hp[(i+hp.length-1)%hp.length],p=hp[i],next=hp[(i+1)%hp.length];const n1={x:p.y-prev.y,y:-(p.x-prev.x)},n2={x:next.y-p.y,y:-(next.x-p.x)};const l1=Math.hypot(n1.x,n1.y),l2=Math.hypot(n2.x,n2.y);n1.x/=l1;n1.y/=l1;n2.x/=l2;n2.y/=l2;const dot=n1.x*n2.x+n1.y*n2.y,den=1+dot;const factor=den>0.15?margin/den:margin;poly.push({x:p.x+(n1.x+n2.x)*factor,y:p.y+(n1.y+n2.y)*factor})}
+ s.moveTo(poly[0].x,poly[0].y);for(const p of poly.slice(1))s.lineTo(p.x,p.y);s.closePath()}
+ return s}
+function solid(shape,z0,z1,curve,edge,bevel){const depth=z1-z0;if(depth<=0)throw Error('Invalid solid depth');const size=edge==='sharp'?0:Math.min(bevel,depth*0.22);const geom=new THREE.ExtrudeGeometry(shape,{depth,steps:1,curveSegments:curve,bevelEnabled:size>0,bevelThickness:size,bevelSize:size,bevelSegments:edge==='round'?5:1});geom.computeBoundingBox();geom.translate(0,0,z0-geom.boundingBox.min.z);return geom}
+function geometryReport(g){const pos=g.getAttribute('position'),index=g.getIndex();if(!pos)return 'No mesh vertices';const edges=new Map(),vertex=new Map();let degenerate=0,triangles=0;const key=i=>{const x=pos.getX(i),y=pos.getY(i),z=pos.getZ(i);return [x,y,z].map(v=>Math.round(v*10000)).join(',')};const id=i=>{const k=key(i);if(!vertex.has(k))vertex.set(k,vertex.size);return vertex.get(k)};const n=index?index.count:pos.count;for(let i=0;i+2<n;i+=3){const ia=index?index.getX(i):i,ib=index?index.getX(i+1):i+1,ic=index?index.getX(i+2):i+2;const a=id(ia),b=id(ib),c=id(ic);if(a===b||b===c||c===a){degenerate++;continue}const v0=new THREE.Vector3(pos.getX(ia),pos.getY(ia),pos.getZ(ia)),v1=new THREE.Vector3(pos.getX(ib),pos.getY(ib),pos.getZ(ib)),v2=new THREE.Vector3(pos.getX(ic),pos.getY(ic),pos.getZ(ic));if(new THREE.Vector3().crossVectors(v1.sub(v0),v2.sub(v0)).lengthSq()<1e-14){degenerate++;continue}triangles++;for(const [u,v] of [[a,b],[b,c],[c,a]]){const k=u<v?u+':'+v:v+':'+u;edges.set(k,(edges.get(k)||0)+1)}}let boundary=0,nonmanifold=0;for(const count of edges.values()){if(count===1)boundary++;else if(count!==2)nonmanifold++}return {triangles,vertices:vertex.size,degenerate,boundary,nonmanifold}}
+// V2.7: Construct one closed boundary representation from 2D regions.
+// No 3D Boolean or independent overlapping shells. Every surface is emitted once.
+const CS=10000;
+function xyPath(points){return points.map(p=>({X:Math.round(p.x*CS),Y:Math.round(p.y*CS)}))}
+function region(op,subject,clip=[],fill=null){
+ const C=window.ClipperLib,c=new C.Clipper();c.StrictlySimple=true;
+ if(subject.length)c.AddPaths(subject,C.PolyType.ptSubject,true);
+ if(clip.length)c.AddPaths(clip,C.PolyType.ptClip,true);
+ const tree=new C.PolyTree(),f=fill??C.PolyFillType.pftNonZero;
+ if(!c.Execute(op,tree,f,f))throw Error('2D polygon operation failed');
+ return tree;
+}
+function rings(tree){const out=[];function walk(n){for(const c of n.Childs()){if(c.Contour().length>=3)out.push({path:c.Contour(),hole:c.IsHole()});walk(c)}}walk(tree);return out}
+function paths(tree){return rings(tree).map(x=>x.path)}
+function loopArea(p){let a=0;for(let i=0;i<p.length;i++){let q=p[(i+1)%p.length];a+=p[i].X*q.Y-q.X*p[i].Y}return a/2}
+function cleanLoop(p){const a=[];for(const v of p){if(!a.length||v.X!==a.at(-1).X||v.Y!==a.at(-1).Y)a.push(v)}if(a.length>1&&a[0].X===a.at(-1).X&&a[0].Y===a.at(-1).Y)a.pop();return a}
+function shapeLoops(shape,detail){const outer=cleanLoop(xyPath(shape.extractPoints(detail).shape));const holes=shape.extractPoints(detail).holes.map(x=>cleanLoop(xyPath(x)));return [outer,...holes].filter(p=>p.length>=3)}
+function baseLoops(shape,detail){return shapeLoops(shape,detail)}
+function buildMesh(basePaths,artPaths,base,depth,raised,edge,bevel){
+ const C=window.ClipperLib;
+ const baseTree=region(C.ClipType.ctUnion,basePaths),artTree=region(C.ClipType.ctUnion,artPaths);
+ const bp=paths(baseTree),ap=paths(artTree);
+ const inside=region(C.ClipType.ctIntersection,ap,bp);
+ const artwork=paths(inside);
+ if(!artwork.length)throw Error('Artwork does not intersect the stamp base');
+ const outside=region(C.ClipType.ctDifference,bp,artwork);
+ const coords=[],faces=[];
+ const vert=(x,y,z)=>{coords.push(x/CS,y/CS,z);return coords.length/3-1};
+ const tri=(a,b,c)=>{if(a!==b&&b!==c&&c!==a)faces.push(a,b,c)};
+ function cap(tree,z,up){
+   function visit(n){for(const node of n.Childs()){
+     if(node.IsHole()){visit(node);continue}
+     const contour=node.Contour();const holes=node.Childs().filter(h=>h.IsHole()).map(h=>h.Contour());
+     let outer=contour.map(p=>new THREE.Vector2(p.X/CS,p.Y/CS));
+     let hs=holes.map(h=>h.map(p=>new THREE.Vector2(p.X/CS,p.Y/CS)));
+     // Three triangulation expects clockwise outer, counter-clockwise holes.
+     if(THREE.ShapeUtils.isClockWise(outer)===false)outer.reverse();
+     for(const h of hs)if(THREE.ShapeUtils.isClockWise(h))h.reverse();
+     const all=[outer,...hs].flat();const offset=coords.length/3;
+     for(const p of all)vert(Math.round(p.x*CS),Math.round(p.y*CS),z);
+     const triangles=THREE.ShapeUtils.triangulateShape(outer,hs);
+     for(const [a,b,c] of triangles){const pa=all[a],pb=all[b],pc=all[c];const cross=(pb.x-pa.x)*(pc.y-pa.y)-(pb.y-pa.y)*(pc.x-pa.x);if(Math.abs(cross)<1e-12)continue;
+       if((cross>0)===up)tri(offset+a,offset+b,offset+c);else tri(offset+a,offset+c,offset+b);
+     }
+     for(const h of node.Childs())if(h.IsHole())visit(h);
+   }}visit(tree)
+ }
+ // Sloped transitions are triangulated as 2D annular regions. Their XY
+ // boundary vertices are identical to the adjoining walls/caps, so the
+ // resulting STL does not rely on matching unrelated 3D Boolean shells.
+ function slopedBand(bandTree,innerTree,zOuter,zInner){
+   const innerVertices=new Set();
+   for(const {path} of rings(innerTree))for(const p of path)innerVertices.add(p.X+','+p.Y);
+   function visit(n){for(const node of n.Childs()){
+     if(node.IsHole()){visit(node);continue}
+     let outer=node.Contour().map(p=>new THREE.Vector2(p.X/CS,p.Y/CS));
+     let hs=node.Childs().filter(h=>h.IsHole()).map(h=>h.Contour().map(p=>new THREE.Vector2(p.X/CS,p.Y/CS)));
+     if(!THREE.ShapeUtils.isClockWise(outer))outer.reverse();
+     for(const h of hs)if(THREE.ShapeUtils.isClockWise(h))h.reverse();
+     const all=[outer,...hs].flat(),offset=coords.length/3;
+     for(const p of all){const X=Math.round(p.x*CS),Y=Math.round(p.y*CS);
+       vert(X,Y,innerVertices.has(X+','+Y)?zInner:zOuter)}
+     for(const [a,b,c] of THREE.ShapeUtils.triangulateShape(outer,hs)){
+       const pa=all[a],pb=all[b],pc=all[c],cross=(pb.x-pa.x)*(pc.y-pa.y)-(pb.y-pa.y)*(pc.x-pa.x);
+       if(Math.abs(cross)<1e-12)continue;
+       if(cross>0)tri(offset+a,offset+b,offset+c);
+       else tri(offset+a,offset+c,offset+b);
+     }
+     for(const h of node.Childs())if(h.IsHole())visit(h);
+   }}visit(bandTree)
+ }
+ function walls(tree,z0,z1,flip=false){for(const {path,hole} of rings(tree)){
+   const p=cleanLoop(path),n=p.length,ccw=loopArea(p)>0;
+   for(let i=0;i<n;i++){const a=p[i],b=p[(i+1)%n];const lo0=vert(a.X,a.Y,z0),lo1=vert(b.X,b.Y,z0),hi0=vert(a.X,a.Y,z1),hi1=vert(b.X,b.Y,z1);
+     const normalRight=ccw!==flip;
+     if(normalRight){tri(lo0,lo1,hi1);tri(lo0,hi1,hi0)}else{tri(lo0,hi1,lo1);tri(lo0,hi0,hi1)}
+   }
+ }}
+ // A flat base, with its exposed face split by the artwork boundary.
+ cap(baseTree,0,false);walls(baseTree,0,base,false);
+ if(raised){
+   cap(outside,base,true);
+   const chamfer=edge==='sharp'?0:Math.min(bevel,depth*.45);
+   const zTop=base+depth;
+   if(chamfer<0.00001){walls(inside,base,zTop);cap(inside,zTop,true)}
+   else{
+     const steps=edge==='round'?8:6;
+     const maxChamfer=Math.min(bevel,depth*.45);
+     const zStart=zTop-maxChamfer;
+     walls(inside,base,zStart);
+     let currentTree=inside,currentPaths=artwork,currentZ=zStart;
+     for(let j=1;j<=steps;j++){
+       const t=j/steps;
+       // A quarter-circle transition: vertical near the wall, flattening
+       // toward the top. Chamfer uses six narrow, collinear bands to reduce long diagonal facets.
+       const insetDistance=edge==='round'?maxChamfer*(1-Math.sqrt(Math.max(0,1-t*t))):maxChamfer*t;
+       const zNext=zStart+maxChamfer*t;
+       const offset=new C.ClipperOffset(2,0.015*CS),inset=[];
+       offset.AddPaths(artwork,C.JoinType.jtRound,C.EndType.etClosedPolygon);
+       offset.Execute(inset,-insetDistance*CS);
+       const nextTree=region(C.ClipType.ctIntersection,inset,artwork);
+       const nextPaths=paths(nextTree);
+       if(!nextPaths.length)throw Error('Edge size collapses the artwork. Reduce bevel size or choose Sharp.');
+       const band=region(C.ClipType.ctDifference,currentPaths,nextPaths);
+       if(!paths(band).length)throw Error('Bevel resolution is too small for this artwork. Increase edge size or use Sharp.');
+       slopedBand(band,nextTree,currentZ,zNext);
+       currentTree=nextTree;currentPaths=nextPaths;currentZ=zNext;
+     }
+     cap(currentTree,zTop,true);
+   }
+ }else{
+   if(depth>=base)throw Error('Cavity depth must be less than base thickness');
+   cap(outside,base,true);
+   // Base top is outside artwork; cavity bottom and interior walls.
+   cap(inside,base-depth,true);
+   walls(inside,base-depth,base,true);
+ }
+ let g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(coords,3));g.setIndex(faces);g=g.toNonIndexed();g.computeVertexNormals();return g;
+}
+function build(){try{$('build').disabled=true;$('export').disabled=true;status.className='';status.textContent='Preparing SVG geometry…';
+ const w=getNumber('width'),h=getNumber('height'),base=getNumber('base'),depth=getNumber('depth'),margin=getNumber('margin'),curve=getNumber('curve'),corner=getNumber('corner'),bevel=getNumber('bevel'),accuracy=getNumber('tolerance');
+ if(w<10||w>200||h<10||h>200)throw Error('Base width and height must be between 10 and 200 mm.');
+ if(base<2||base>25)throw Error('Base thickness must be between 2 and 25 mm.');
+ if(depth<=0||depth>5)throw Error('Relief/cavity depth must be greater than 0 and at most 5 mm.');
+ if($('mode').value==='recessed'&&depth>=base)throw Error('Recessed cavity depth must be less than base thickness.');
+ if(margin<.5||margin>=Math.min(w,h)/2)throw Error('Artwork margin is too large for the selected base.');
+ if(curve<3||curve>128)throw Error('Curve detail must be between 3 and 128.');
+ if(accuracy<.005||accuracy>.3)throw Error('Curve accuracy must be between 0.005 and 0.3 mm.');
+ if(corner<0||bevel<0)throw Error('Corner radius and bevel size cannot be negative.');
+ const raised=$('mode').value==='raised',kind=$('baseShape').value,edge=$('edge').value,shapes=normalizeShapes(svgText);
+ const raw=getArtwork(shapes,w,h,margin,$('mirror').checked,1);
+ const requestedSimplify=getNumber('simplify');if(requestedSimplify<0||requestedSimplify>.5)throw Error('SVG simplification must be between 0 and 0.5 mm.');
+ const effectiveTolerance=Math.max(accuracy,requestedSimplify),optimized=optimizeShapes(raw.transformed,curve,effectiveTolerance);
+ const outline=baseOutline(kind,w,h,corner,raw.points,margin);
+ const baseP=baseLoops(outline,Math.min(curve,96));
+ const artP=optimized.shapes.flatMap(shape=>shapeLoops(shape,3));
+ // V2.7: Fail closed, with explicit width reduction instead of a silent
+ // invalid STL or a disguised sharp fallback. A valid candidate is accepted
+ // only when its mesh actually has more triangles than the sharp baseline.
+ let geometry=null,report=null,appliedBevel=bevel,attemptLog=[];
+ const sharpReference=(raised&&edge!=='sharp'&&bevel>0)?buildMesh(baseP,artP,base,depth,raised,'sharp',0):null;
+ const sharpTriangles=sharpReference?geometryReport(sharpReference).triangles:0;
+ if(sharpReference)sharpReference.dispose();
+ const widths=(raised&&edge!=='sharp'&&bevel>0)
+   ?[1,.85,.7,.55,.4,.3,.2,.1].map(f=>Number((bevel*f).toFixed(5))).filter((v,i,a)=>v>0&&a.indexOf(v)===i)
+   :[bevel];
+ for(const width of widths){
+   let candidate=null;
+   try{
+     candidate=buildMesh(baseP,artP,base,depth,raised,edge,width);
+     const check=geometryReport(candidate);
+     const invalid=check.boundary+check.nonmanifold+check.degenerate;
+     const noBevel=sharpTriangles>0&&check.triangles<=sharpTriangles;
+     attemptLog.push(`${width.toFixed(3)} mm: ${check.boundary} open, ${check.nonmanifold} non-manifold, ${check.degenerate} degenerate${noBevel?' (bevel not verified)':''}`);
+     if(!invalid&&!noBevel){geometry=candidate;report=check;appliedBevel=width;break}
+   }catch(err){attemptLog.push(`${width.toFixed(3)} mm: ${err.message}`)}
+   if(candidate)candidate.dispose();
+ }
+ if(!geometry){
+   if(finalMesh){modelGroup.remove(finalMesh);finalMesh.geometry.dispose();finalMesh.material.dispose();finalMesh=null}
+   status.textContent='No valid chamfer found. Export blocked.\n'+attemptLog.join('\n')+'\nTry Sharp, smaller edge size, or simplifying very narrow features.';
+   status.className='bad';return;
+ }
+ const issues=report.boundary+report.nonmanifold+report.degenerate;
+ if(finalMesh){modelGroup.remove(finalMesh);finalMesh.geometry.dispose();finalMesh.material.dispose()}
+ finalMesh=new THREE.Mesh(geometry,new THREE.MeshStandardMaterial({color:0xc7a27c,metalness:.12,roughness:.67,side:THREE.DoubleSide}));modelGroup.add(finalMesh);
+ const bounds=new THREE.Box3().setFromObject(finalMesh),center=bounds.getCenter(new THREE.Vector3()),span=bounds.getSize(new THREE.Vector3()),radius=Math.max(span.x,span.y,span.z,15);controls.target.copy(center);camera.position.copy(center).add(new THREE.Vector3(radius*1.5,-radius*1.7,radius*1.6));camera.near=.1;camera.far=Math.max(2000,radius*20);camera.updateProjectionMatrix();controls.update();
+ status.textContent=`${raised?'Debossing (raised stamp)':'Embossing (recessed die)'} · ${kind} base · ${shapes.length} SVG shapes / ${optimized.vertices.toLocaleString()} optimized vertices · ${effectiveTolerance.toFixed(3)} mm tolerance · ${report.triangles.toLocaleString()} triangles\nMesh check: ${report.boundary} boundary edges, ${report.nonmanifold} non-manifold edges, ${report.degenerate} degenerate triangles. ${issues?'EXPORT BLOCKED: invalid mesh.':'Basic manifold checks passed. Export enabled.'}\nRequested edge: ${bevel.toFixed(3)} mm · Applied edge: ${appliedBevel.toFixed(3)} mm${appliedBevel<bevel?" (automatically reduced for mesh integrity)":""}.\n${attemptLog.join(' | ')}\nV2.7 validates each candidate and blocks invalid exports.`;
+ status.className=issues?'bad':'good';$('export').disabled=!!issues;
+ }catch(e){status.textContent='Generation failed: '+e.message;status.className='bad';console.error(e)}finally{$('build').disabled=false}}
+const settingIds=['mode','mirror','width','height','base','depth','margin','curve','tolerance','baseShape','corner','edge','bevel','simplify'];
+function download(data,name,type){const url=URL.createObjectURL(new Blob([data],{type}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),2500)}
+$('save').onclick=()=>{const settings={};for(const id of settingIds)settings[id]=$(id).type==='checkbox'?$(id).checked:$(id).value;download(JSON.stringify({format:'LeatherStampStudio',version:2,svg:svgText,settings},null,2),'leather_stamp_project.json','application/json')};
+$('load').onclick=()=>$('projectFile').click();$('projectFile').onchange=async e=>{try{const f=e.target.files?.[0];if(!f)return;const obj=JSON.parse(await f.text());if(obj.format!=='LeatherStampStudio'||typeof obj.svg!=='string'||!obj.settings)throw Error('Not a Leather Stamp Studio project');validateSvg(obj.svg);svgText=obj.svg;for(const id of settingIds){if(obj.settings[id]!==undefined){if($(id).type==='checkbox')$(id).checked=!!obj.settings[id];else $(id).value=obj.settings[id]}}$('file').value='';$('export').disabled=true;status.textContent='Project loaded. Click Generate 3D stamp.'}catch(err){status.textContent='Project load failed: '+err.message;status.className='bad'}finally{e.target.value=''}};
+$('build').onclick=()=>{setTimeout(build,35)};
+$('export').onclick=()=>{if(!finalMesh)return;try{const exporter=new STLExporter();const output=exporter.parse(finalMesh,{binary:true});download(output,`leather_stamp_v2_5_${$('mode').value}_${$('baseShape').value}.stl`,'model/stl')}catch(e){status.textContent='STL export failed: '+e.message;status.className='bad'}};
+</script></body></html>
