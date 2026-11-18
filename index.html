@@ -44,6 +44,7 @@
 </style>
 <script type="importmap">{"imports":{"three":"https://esm.sh/three@0.180.0","three/addons/":"https://esm.sh/three@0.180.0/examples/jsm/"}}</script>
 <script src="https://cdn.jsdelivr.net/npm/clipper-lib@6.4.2/clipper.js"></script>
+<script src="./polygon-geometry.js"></script>
 </head><body><header><div><h1>Leather Stamp Studio <small> / V3.1 UX preview</small></h1><small>SVG → printable STL · designed for leather embossing dies</small></div><small>Browser-based · mm</small></header><main><aside>
 <div class="workflow" aria-label="Generate and export controls"><div class="step-hint">CREATE → CHECK → EXPORT</div><div class="buttons"><button id="build" title="Ctrl/⌘ + Enter">Generate 3D stamp</button><button class="secondary" id="export" disabled title="Generate and pass mesh checks before exporting">Download STL</button></div><small id="readyState" role="status" aria-live="polite">Sample artwork ready · Generate to preview</small></div>
 
@@ -296,20 +297,7 @@ function geometryReport(g){
 
 // Construct one closed boundary representation from 2D regions.
 // No 3D Boolean or independent overlapping shells. Every surface is emitted once.
-const CS=10000;
-function xyPath(points){return points.map(p=>({X:Math.round(p.x*CS),Y:Math.round(p.y*CS)}))}
-function region(op,subject,clip=[],fill=null){
- const C=window.ClipperLib,c=new C.Clipper();c.StrictlySimple=true;
- if(subject.length)c.AddPaths(subject,C.PolyType.ptSubject,true);
- if(clip.length)c.AddPaths(clip,C.PolyType.ptClip,true);
- const tree=new C.PolyTree(),f=fill??C.PolyFillType.pftNonZero;
- if(!c.Execute(op,tree,f,f))throw Error('2D polygon operation failed');
- return tree;
-}
-function rings(tree){const out=[];function walk(n){for(const c of n.Childs()){if(c.Contour().length>=3)out.push({path:c.Contour(),hole:c.IsHole()});walk(c)}}walk(tree);return out}
-function paths(tree){return rings(tree).map(x=>x.path)}
-function loopArea(p){let a=0;for(let i=0;i<p.length;i++){let q=p[(i+1)%p.length];a+=p[i].X*q.Y-q.X*p[i].Y}return a/2}
-function cleanLoop(p){const a=[];for(const v of p){if(!a.length||v.X!==a.at(-1).X||v.Y!==a.at(-1).Y)a.push(v)}if(a.length>1&&a[0].X===a.at(-1).X&&a[0].Y===a.at(-1).Y)a.pop();return a}
+const {CS,xyPath,cleanLoop,region,rings,paths,offsetArtworkPaths}=window.createPolygonGeometry(window.ClipperLib);
 function shapeLoops(shape,detail){const outer=cleanLoop(xyPath(shape.extractPoints(detail).shape));const holes=shape.extractPoints(detail).holes.map(x=>cleanLoop(xyPath(x)));return [outer,...holes].filter(p=>p.length>=3)}
 function baseLoops(shape,detail){return shapeLoops(shape,detail)}
 // V3.0: weld only *exposed boundary endpoints* that differ by
@@ -543,20 +531,6 @@ function meshFaultDetails(geom,limit=8){
  const bad=[...edges.values()].filter(e=>e.faces.length!==2);
  const fmt=v=>v.map(x=>x.toFixed(4)).join(',');
  return bad.slice(0,limit).map(e=>`${e.faces.length} face(s): (${fmt(coords[e.a])}) - (${fmt(coords[e.b])})`).concat(degens.slice(0,limit).map(i=>`degenerate face ${i}`)).join('\n');
-}
-// Adjust filled 2D regions AFTER placing and sizing the SVG.
-// Positive: expand islands, reduce holes. Negative: contract islands, enlarge holes.
-function offsetArtworkPaths(originalPaths,offsetMm){
- if(Math.abs(offsetMm)<0.000001)return originalPaths;
- const C=window.ClipperLib;
- const canonical=paths(region(C.ClipType.ctUnion,originalPaths));
- const co=new C.ClipperOffset(2,0.015*CS),result=[];
- co.AddPaths(canonical,C.JoinType.jtRound,C.EndType.etClosedPolygon);
- co.Execute(result,offsetMm*CS);
- if(!result.length)throw Error('Design thickness adjustment removed all artwork. Reduce the negative offset.');
- const output=paths(region(C.ClipType.ctUnion,result));
- if(!output.length)throw Error('Design offset produced no usable filled artwork.');
- return output;
 }
 function buildMesh(basePaths,artPaths,base,depth,raised,edge,bevel){
  const C=window.ClipperLib;

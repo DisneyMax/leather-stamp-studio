@@ -9,6 +9,8 @@ const compound = artwork('<path fill-rule="evenodd" d="M0 0H32V32H0Z M4 4H28V28H
 test.beforeEach(async ({ page }) => {
   // Exercise the production HTML and its pinned libraries without live CDN requests.
   await page.route('http://studio.test/', route => route.fulfill({ path: path.join(root, 'index.html') }));
+  await page.route('http://studio.test/polygon-geometry.js', route =>
+    route.fulfill({ path: path.join(root, 'polygon-geometry.js'), contentType: 'text/javascript' }));
   await page.route('https://cdn.jsdelivr.net/npm/clipper-lib@6.4.2/clipper.js', route =>
     route.fulfill({ path: require.resolve('clipper-lib') }));
   await page.route('https://esm.sh/three@0.180.0**', route => {

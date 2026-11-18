@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Browser-based SVG-to-STL utility for 3D-printable leather stamps, deployed via GitHub Pages.",
   "scripts": {
-    "test": "playwright test"
+    "test": "node --test tests/polygon-geometry.test.js && playwright test"
   },
   "repository": {
     "type": "git",
