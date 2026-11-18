@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Leather Stamp Studio V3.0 — SVG to STL</title>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Leather Stamp Studio V3.1 UX preview — SVG to STL</title>
 <style>
 :root{font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;color:#e9edf2;background:#10151c}*{box-sizing:border-box}body{margin:0}header{padding:19px 26px;border-bottom:1px solid #303945;display:flex;justify-content:space-between;gap:12px;align-items:center}h1{font-size:21px;margin:0}small,.muted{color:#9eacbc}main{display:grid;grid-template-columns:350px 1fr;min-height:calc(100vh - 72px)}aside{padding:22px;border-right:1px solid #303945;overflow:auto;max-height:calc(100vh - 72px)}section{margin-bottom:22px}h2{font-size:13px;letter-spacing:.09em;text-transform:uppercase;color:#b6c2d0;margin:0 0 12px}label{font-size:13px;display:block;margin-bottom:6px}.field{margin:0 0 13px}.pair{display:grid;grid-template-columns:1fr 1fr;gap:10px}input[type=number],select,input[type=file]{width:100%;padding:10px;background:#1b2430;border:1px solid #394655;border-radius:8px;color:#f2f4f7;font-size:14px}input[type=file]{font-size:12px}input[type=checkbox]{accent-color:#d4a66d}button{background:#d9a76b;color:#1c1711;border:0;padding:12px 15px;border-radius:8px;font-weight:700;cursor:pointer}button.secondary{background:#273342;color:#e8edf3}button:disabled{opacity:.45;cursor:not-allowed}.field:has(input:disabled){opacity:.5}.segmented{display:grid;grid-template-columns:1fr 1fr;gap:7px}.segmented label{margin:0;display:flex;align-items:center;gap:6px;padding:10px;border:1px solid #394655;border-radius:8px;cursor:pointer;background:#1b2430}.segmented input{accent-color:#d4a66d}.settings-note{background:#192636;border-left:3px solid #d4a66d;padding:10px 12px;border-radius:4px;margin:8px 0 12px}.measure{font-variant-numeric:tabular-nums;color:#e3c69c;font-weight:600}.section-divider{border:0;border-top:1px solid #303945;margin:16px 0}.readonly{color:#9eacbc}.buttons{display:flex;gap:9px;flex-wrap:wrap}.check{display:flex;gap:8px;align-items:center;margin:10px 0}.check label{margin:0}.hint{font-size:12px;color:#9eacbc;line-height:1.55}#stage{position:relative;min-height:550px}#viewport{position:absolute;inset:0}#overlay{position:absolute;left:18px;top:17px;pointer-events:none;background:#151c25d9;border:1px solid #334051;padding:11px 14px;border-radius:9px;font-size:12px;line-height:1.7}#status{position:absolute;bottom:18px;left:18px;right:18px;max-width:750px;background:#1d2936e8;border:1px solid #3a4958;border-radius:9px;padding:12px 15px;font-size:13px;white-space:pre-wrap;line-height:1.5}.good{color:#9cdbb0}.bad{color:#ffb0a4}.footer{padding:12px 22px;border-top:1px solid #303945;color:#9eacbc;font-size:12px}@media(max-width:850px){main{display:block}aside{max-height:none;border-right:0;border-bottom:1px solid #303945}#stage{height:65vh;min-height:430px}}
 
@@ -20,30 +20,75 @@
 .advanced{border-top:1px solid #303945;padding-top:13px;margin-top:13px}.advanced summary{cursor:pointer;color:#d8e2ee;font-weight:600;font-size:13px;margin-bottom:12px}
 .advanced summary:hover{color:#e3bd84}
 @media(max-width:850px){.workflow{top:0;margin:-22px -22px 18px}.workflow .buttons{grid-template-columns:1fr 1fr}#stageTools{right:10px;top:10px}#overlay{left:10px;top:10px;max-width:58%}#status{bottom:10px;left:10px;right:10px;max-height:40vh}}
+
+/* V3.1 focused workflow — technical controls are disclosed on demand */
+.ui-section{margin-bottom:22px}.ui-section h2{margin-bottom:12px}
+.ui-section .hint{margin:7px 0 0}.quiet-button{font-size:12px;padding:8px 11px}
+.exact-fields{display:none;margin:9px 0 4px;border-left:2px solid #58677a;padding-left:11px}
+.exact-fields.active{display:block}
+.advanced-group{border:1px solid #384654;background:#141e29;border-radius:11px;margin:10px 0;padding:0;overflow:hidden}
+.advanced-group>summary{list-style:none;cursor:pointer;padding:15px;display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:14px;font-weight:650}
+.advanced-group>summary::-webkit-details-marker{display:none}
+.advanced-group>summary:before{content:'▸';color:#d9a76b;margin-right:2px}
+.advanced-group[open]>summary:before{content:'▾'}
+.advanced-group>summary span{flex:1}
+.advanced-group>summary small{font-size:11px;font-weight:400;text-align:right;max-width:145px}
+.advanced-body{padding:0 15px 16px}
+.nested-advanced{margin:12px 0;border-top:1px solid #394655;padding-top:12px}
+.nested-advanced>summary{cursor:pointer;color:#cad5e1;font-size:13px;font-weight:650;margin-bottom:10px}
+#cornerField[hidden],#bevelField[hidden]{display:none}
+#sizeSummary{margin:8px 0 0}
+@media(max-width:850px){.advanced-group>summary small{max-width:120px}}
 </style>
 <script type="importmap">{"imports":{"three":"https://esm.sh/three@0.180.0","three/addons/":"https://esm.sh/three@0.180.0/examples/jsm/","three-bvh-csg":"https://esm.sh/three-bvh-csg@0.0.17?external=three,three-mesh-bvh","three-mesh-bvh":"https://esm.sh/three-mesh-bvh@0.9.2?external=three"}}</script>
 <script src="https://cdn.jsdelivr.net/npm/clipper-lib@6.4.2/clipper.js"></script>
-</head><body><header><div><h1>Leather Stamp Studio <small> / V3.0</small></h1><small>SVG → printable STL · designed for leather embossing dies</small></div><small>Browser-based · mm</small></header><main><aside>
+</head><body><header><div><h1>Leather Stamp Studio <small> / V3.1 UX preview</small></h1><small>SVG → printable STL · designed for leather embossing dies</small></div><small>Browser-based · mm</small></header><main><aside>
 <div class="workflow" aria-label="Generate and export controls"><div class="step-hint">CREATE → CHECK → EXPORT</div><div class="buttons"><button id="build" title="Ctrl/⌘ + Enter">Generate 3D stamp</button><button class="secondary" id="export" disabled title="Generate and pass mesh checks before exporting">Download STL</button></div><small id="readyState" role="status" aria-live="polite">Sample artwork ready · Generate to preview</small></div>
-<section><h2>01 / Artwork</h2><div class="field"><label for="file">SVG artwork</label><label for="file" class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Choose SVG or drop an SVG file"><strong>＋ Drop your SVG here</strong><small>or click to browse your files</small><input id="file" type="file" accept=".svg,image/svg+xml"></label><div id="artworkName">Using included paw-print example</div></div><div class="buttons"><button class="secondary" id="demo">Load paw-print artwork</button></div><p class="hint">Filled vector paths work best. Convert text and strokes to outlines in your SVG editor. Choose Fit to base or set the artwork size independently of the backing plate.</p></section>
-<section><h2>02 / Impression</h2><div class="field"><label for="mode">Stamp geometry</label><select id="mode"><option value="raised">Raised artwork → recessed leather impression</option><option value="recessed">Recessed artwork → raised leather impression*</option></select></div><div class="check"><input id="mirror" type="checkbox" checked><label for="mirror">Mirror artwork (recommended for stamping)</label></div><p class="hint">*A recessed die alone may not produce a raised leather impression; a matching male die or suitable backing is usually needed.</p></section>
-<section><h2>03 / Size & dimensions</h2>
-<div class="field"><label>Artwork size</label><div class="segmented"><label><input type="radio" name="artSizing" id="fitArt" value="fit" checked> Fit to base</label><label><input type="radio" name="artSizing" id="customArt" value="custom"> Exact size</label></div></div>
+
+<section class="ui-section"><h2>01 / Your artwork</h2>
+<div class="field"><label for="file" class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Choose or drop SVG artwork"><strong>＋ Choose an SVG or drop it here</strong><small>Filled vector artwork works best</small><input id="file" type="file" accept=".svg,image/svg+xml"></label><div id="artworkName">Using included paw-print example</div></div>
+<button class="secondary quiet-button" id="demo">Use example paw print</button>
+</section>
+<section class="ui-section"><h2>02 / Stamp setup</h2>
+<div class="field"><label for="mode">Impression</label><select id="mode"><option value="raised">Recessed impression in leather (raised stamp)</option><option value="recessed">Raised impression in leather (recessed die)</option></select></div>
+<div class="check"><input id="mirror" type="checkbox" checked><label for="mirror">Mirror artwork for stamping</label></div>
+<div class="field"><label for="edge">Artwork edge</label><select id="edge"><option value="sharp">Sharp</option><option value="chamfer" selected>Chamfered · recommended starting point</option><option value="round">Rounded</option></select></div>
+<p class="hint">Recommended start: 0.25 mm chamfer, automatically reduced when needed for a valid mesh. Change the exact edge size in Advanced settings.</p>
+</section>
+<section class="ui-section"><h2>03 / Size</h2>
+<div class="field"><label>Artwork sizing</label><div class="segmented"><label><input type="radio" name="artSizing" id="fitArt" value="fit" checked> Fit to base</label><label><input type="radio" name="artSizing" id="customArt" value="custom"> Exact size</label></div></div>
+<div id="exactSizeFields" class="exact-fields">
 <div class="pair"><div class="field"><label for="artWidth">Artwork width (mm)</label><input id="artWidth" type="number" min="0.5" max="200" step="0.5" value="32" disabled></div><div class="field"><label for="artHeight">Artwork height (mm)</label><input id="artHeight" type="number" min="0.5" max="200" step="0.5" value="32" disabled></div></div>
-<div class="check"><input id="lockAspect" type="checkbox" checked><label for="lockAspect">Lock artwork proportions</label></div>
-<div class="settings-note hint">Artwork is always centered. <span id="sizeSummary" class="measure">Generate to see actual artwork dimensions.</span> In Fit mode, the available space is base size minus margin.</div>
-<hr class="section-divider"><h2>Backing plate</h2>
-<div class="pair"><div class="field"><label for="width">Base width (mm)</label><input id="width" type="number" min="10" max="200" step="1" value="40"></div><div class="field"><label for="height">Base height (mm)</label><input id="height" type="number" min="10" max="200" step="1" value="40"></div><div class="field"><label for="base">Base thickness (mm)</label><input id="base" type="number" min="2" max="25" step="0.5" value="6"></div><div class="field"><label for="depth">Relief / cavity depth (mm)</label><input id="depth" type="number" min="0.2" max="5" step="0.1" value="1.5"></div><div class="field"><label for="margin">Artwork margin (mm)</label><input id="margin" type="number" min="0.5" max="30" step="0.5" value="4"></div><div class="field"><label for="curve">Curve detail (advanced)</label><input id="curve" type="number" min="3" max="128" step="1" value="64"></div></div>
-<div class="field"><label for="tolerance">Curve accuracy (mm; smaller = smoother)</label><input id="tolerance" type="number" min="0.005" max="0.3" step="0.005" value="0.035"></div><p class="hint">Exact size controls the artwork footprint, not the base. Uncheck Lock proportions to stretch artwork. Artwork must fit inside the base with the specified margin. Curve detail is retained for older projects and base outlines.</p></section>
-<section><h2>04 / Base & edge profile</h2>
+<div class="check"><input id="lockAspect" type="checkbox" checked><label for="lockAspect">Keep original proportions</label></div>
+</div>
+<div class="pair"><div class="field"><label for="width">Base width (mm)</label><input id="width" type="number" min="10" max="200" step="1" value="40"></div><div class="field"><label for="height">Base height (mm)</label><input id="height" type="number" min="10" max="200" step="1" value="40"></div></div>
 <div class="field"><label for="baseShape">Base shape</label><select id="baseShape"><option value="rect">Rectangle</option><option value="roundrect">Rounded rectangle</option><option value="circle">Circle / ellipse</option><option value="contour">SVG contour (convex silhouette)</option></select></div>
-<div class="field"><label for="corner">Corner radius (mm)</label><input id="corner" type="number" min="0" max="40" step="0.5" value="5"></div>
-<div class="field"><label for="edge">Artwork edge profile</label><select id="edge"><option value="sharp">Sharp</option><option value="chamfer" selected>Chamfered</option><option value="round">Rounded (multi-ring)</option></select></div>
-<div class="field"><label for="bevel">Edge size (mm)</label><input id="bevel" type="number" min="0" max="2" step="0.05" value="0.25"></div>
-<div class="field"><label for="simplify">SVG simplification (mm)</label><input id="simplify" type="number" min="0" max="0.5" step="0.01" value="0.02"></div><p class="hint">Effective contour tolerance is the larger of Curve accuracy and SVG simplification. Set simplification to 0 to preserve maximum detail allowed by Curve accuracy.</p><p class="hint">Contour uses a single convex silhouette around the artwork, connecting disconnected islands. It is not a tight concave outline. Bevel size is clamped to fit relief depth. Rounded uses eight progressive contour bands; chamfer uses six. The utility may reduce the entire bevel width to find a valid mesh; it does not yet vary width locally. Actual applied width is reported.</p></section>
-<section><h2>05 / Projects</h2><div class="buttons"><button class="secondary" id="save">Save project JSON</button><button class="secondary" id="load">Load project JSON</button><input type="file" id="projectFile" accept=".json,application/json" hidden></div><p class="hint">Project JSON includes SVG artwork and all settings; no server is used.</p></section>
-<section><h2>06 / Final checks</h2><p class="hint">V3.0 checks triangle integrity, boundary edges, non-manifold edges, and degenerate faces before allowing STL export. Automatic bevel recovery and narrowly scoped geometry repair may be applied when necessary. Warnings are not a guarantee of slicer compatibility. STL is unitless; import into Bambu Studio as millimeters.</p></section>
-</aside><div id="stage"><div id="viewport"></div><div id="stageTools"><button id="resetView" title="Recenter and fit your stamp in the 3D view">⤢ Fit view</button></div><div id="overlay"><b>3D preview</b><br>Drag to rotate · Scroll to zoom<br>Right-drag to pan</div><div id="status" aria-live="polite">Loading 3D libraries… Internet access is required when opening this HTML file.</div></div></main><div class="footer">V3.0 stable · Independent artwork sizing · Validated SVG-to-STL export · Test printed stamps on a leather offcut before production use.</div>
+<p id="sizeSummary" class="hint measure" aria-live="polite">Generate to see artwork dimensions.</p>
+</section>
+<details class="advanced-group" id="advancedSettings"><summary><span>Advanced settings</span><small>Depth, margins, bevel, and geometry quality</small></summary>
+<div class="advanced-body">
+<p class="hint">The defaults are our tested starting values. Adjust only if you need a different impression depth, clearance or edge detail.</p>
+<div class="pair">
+<div class="field"><label for="base">Base thickness (mm)</label><input id="base" type="number" min="2" max="25" step="0.5" value="6"></div>
+<div class="field"><label for="depth">Impression depth (mm)</label><input id="depth" type="number" min="0.2" max="5" step="0.1" value="1.5"></div>
+<div class="field"><label for="margin">Artwork margin (mm)</label><input id="margin" type="number" min="0.5" max="30" step="0.5" value="4"></div>
+<div class="field" id="bevelField"><label for="bevel">Edge size (mm)</label><input id="bevel" type="number" min="0" max="2" step="0.05" value="0.25"></div>
+</div>
+<div class="field" id="cornerField"><label for="corner">Base corner radius (mm)</label><input id="corner" type="number" min="0" max="40" step="0.5" value="5"></div>
+<details class="nested-advanced"><summary>Mesh detail controls</summary>
+<div class="pair"><div class="field"><label for="curve">Curve detail</label><input id="curve" type="number" min="3" max="128" step="1" value="64"></div>
+<div class="field"><label for="tolerance">Curve accuracy (mm)</label><input id="tolerance" type="number" min="0.005" max="0.3" step="0.005" value="0.035"></div></div>
+<div class="field"><label for="simplify">SVG simplification (mm)</label><input id="simplify" type="number" min="0" max="0.5" step="0.01" value="0.02"></div>
+<p class="hint">Smaller accuracy values preserve more detail but increase mesh complexity. Contour base uses a convex silhouette. Edge recovery may reduce the entire bevel width; the applied value is shown in validation details.</p>
+</details>
+<div class="buttons"><button type="button" class="secondary" id="resetDefaults">Restore recommended settings</button></div>
+</div></details>
+<details class="advanced-group" id="projectSettings"><summary><span>Projects &amp; technical checks</span><small>Save, load, and validation notes</small></summary><div class="advanced-body">
+<div class="buttons"><button class="secondary" id="save">Save project JSON</button><button class="secondary" id="load">Load project JSON</button><input type="file" id="projectFile" accept=".json,application/json" hidden></div>
+<p class="hint">Projects include SVG artwork and all size and quality settings, stored locally in your downloaded JSON file.</p>
+<h2>Final checks</h2><p class="hint">V3.1 validates boundary edges, non-manifold edges and degenerate triangles before enabling STL export. Mesh checks cannot guarantee slicer compatibility or print strength. Import STL into Bambu Studio as millimeters. Recessed dies may require a matching positive die to produce a raised leather impression.</p>
+</div></details>
+</aside><div id="stage"><div id="viewport"></div><div id="stageTools"><button id="resetView" title="Recenter and fit your stamp in the 3D view">⤢ Fit view</button></div><div id="overlay"><b>3D preview</b><br>Drag to rotate · Scroll to zoom<br>Right-drag to pan</div><div id="status" aria-live="polite">Loading 3D libraries… Internet access is required when opening this HTML file.</div></div></main><div class="footer">V3.1 UX preview · Tested V3.0 mesh engine · Test stamps on a leather offcut before production use.</div>
 <script type="module">
 import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
@@ -655,12 +700,28 @@ function build(){try{$('build').disabled=true;$('export').disabled=true;status.c
  status.textContent=`Artwork: ${raw.artW.toFixed(2)} × ${raw.artH.toFixed(2)} mm · Base: ${w.toFixed(2)} × ${h.toFixed(2)} mm\n${raised?'Debossing (raised stamp)':'Embossing (recessed die)'} · ${kind} base · ${shapes.length} SVG shapes / ${optimized.vertices.toLocaleString()} optimized vertices · ${effectiveTolerance.toFixed(3)} mm tolerance · ${report.triangles.toLocaleString()} triangles\nMesh check: ${report.boundary} boundary edges, ${report.nonmanifold} non-manifold edges, ${report.degenerate} degenerate triangles. ${issues?'EXPORT BLOCKED: invalid mesh.':'Basic manifold checks passed. Export enabled.'}\nRequested edge: ${bevel.toFixed(3)} mm · Applied edge: ${appliedBevel.toFixed(3)} mm${appliedBevel<bevel?" (automatically reduced for mesh integrity)":""}.\n${attemptLog.join(' | ')}\nV3.0 validates each candidate and blocks invalid exports.`;
  status.className=issues?'bad':'good';$('export').disabled=!!issues;progress(issues?'Mesh invalid · Export blocked':'Mesh validated · STL ready to download',issues?'error':'ok');
  }catch(e){status.textContent='Generation failed: '+e.message;status.className='bad';progress('Generation failed · Review the details','error');console.error(e)}finally{$('build').disabled=false}}
+
+function syncSimpleUI(){
+ const exact=$('customArt').checked;
+ $('exactSizeFields').classList.toggle('active',exact);
+ $('cornerField').hidden=$('baseShape').value!=='roundrect';
+ $('bevelField').hidden=$('edge').value==='sharp';
+}
+['fitArt','customArt','baseShape','edge'].forEach(id=>$(id).addEventListener('change',syncSimpleUI));
+$('resetDefaults').onclick=()=>{
+ const defaults={mode:'raised',mirror:true,width:40,height:40,base:6,depth:1.5,margin:4,curve:64,tolerance:0.035,baseShape:'rect',corner:5,edge:'chamfer',bevel:0.25,simplify:0.02,lockAspect:true};
+ for(const [id,value] of Object.entries(defaults)){$(id).type==='checkbox'?$(id).checked=value:$(id).value=value;}
+ $('fitArt').checked=true;$('customArt').checked=false;syncSizingUI();syncSimpleUI();
+ $('export').disabled=true;status.className='';status.textContent='Recommended settings restored. Click Generate 3D stamp.';
+ progress('Settings restored · Generate to preview');
+};
+syncSimpleUI();
 const settingIds=['mode','mirror','width','height','base','depth','margin','curve','tolerance','baseShape','corner','edge','bevel','simplify','artWidth','artHeight','lockAspect'];
 function download(data,name,type){const url=URL.createObjectURL(new Blob([data],{type}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),2500)}
 $('save').onclick=()=>{const settings={};for(const id of settingIds)settings[id]=$(id).type==='checkbox'?$(id).checked:$(id).value;settings.artSizing=$('customArt').checked?'custom':'fit';download(JSON.stringify({format:'LeatherStampStudio',version:2,svg:svgText,settings},null,2),'leather_stamp_project.json','application/json')};
-$('load').onclick=()=>$('projectFile').click();$('projectFile').onchange=async e=>{try{const f=e.target.files?.[0];if(!f)return;const obj=JSON.parse(await f.text());if(obj.format!=='LeatherStampStudio'||typeof obj.svg!=='string'||!obj.settings)throw Error('Not a Leather Stamp Studio project');validateSvg(obj.svg);svgText=obj.svg;refreshAspectFromSVG();$('customArt').checked=obj.settings.artSizing==='custom';$('fitArt').checked=!$('customArt').checked;syncSizingUI();for(const id of settingIds){if(obj.settings[id]!==undefined){if($(id).type==='checkbox')$(id).checked=!!obj.settings[id];else $(id).value=obj.settings[id]}}$('file').value='';fileLabel('Project artwork');$('export').disabled=true;status.className='';status.textContent='Project loaded. Click Generate 3D stamp.';progress('Project loaded · Generate to preview')}catch(err){status.textContent='Project load failed: '+err.message;status.className='bad';progress('Project load failed','error')}finally{e.target.value=''}};
+$('load').onclick=()=>$('projectFile').click();$('projectFile').onchange=async e=>{try{const f=e.target.files?.[0];if(!f)return;const obj=JSON.parse(await f.text());if(obj.format!=='LeatherStampStudio'||typeof obj.svg!=='string'||!obj.settings)throw Error('Not a Leather Stamp Studio project');validateSvg(obj.svg);svgText=obj.svg;refreshAspectFromSVG();$('customArt').checked=obj.settings.artSizing==='custom';$('fitArt').checked=!$('customArt').checked;syncSizingUI();for(const id of settingIds){if(obj.settings[id]!==undefined){if($(id).type==='checkbox')$(id).checked=!!obj.settings[id];else $(id).value=obj.settings[id]}}$('file').value='';fileLabel('Project artwork');$('export').disabled=true;status.className='';syncSimpleUI();status.textContent='Project loaded. Click Generate 3D stamp.';progress('Project loaded · Generate to preview')}catch(err){status.textContent='Project load failed: '+err.message;status.className='bad';progress('Project load failed','error')}finally{e.target.value=''}};
 $('build').onclick=()=>{setTimeout(build,35)};
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter'&&!e.repeat){e.preventDefault();if(!$('build').disabled)$('build').click()}});
 $('resetView').onclick=()=>{if(!finalMesh){controls.target.set(0,0,5);camera.position.set(75,-85,95);controls.update();return}const bounds=new THREE.Box3().setFromObject(finalMesh),center=bounds.getCenter(new THREE.Vector3()),span=bounds.getSize(new THREE.Vector3()),radius=Math.max(span.x,span.y,span.z,15);controls.target.copy(center);camera.position.copy(center).add(new THREE.Vector3(radius*1.5,-radius*1.7,radius*1.6));controls.update()};
-$('export').onclick=()=>{if(!finalMesh)return;try{const exporter=new STLExporter();const output=exporter.parse(finalMesh,{binary:true});download(output,`leather_stamp_v3_0_${$('mode').value}_${$('baseShape').value}.stl`,'model/stl')}catch(e){status.textContent='STL export failed: '+e.message;status.className='bad'}};
+$('export').onclick=()=>{if(!finalMesh)return;try{const exporter=new STLExporter();const output=exporter.parse(finalMesh,{binary:true});download(output,`leather_stamp_v3_1_${$('mode').value}_${$('baseShape').value}.stl`,'model/stl')}catch(e){status.textContent='STL export failed: '+e.message;status.className='bad'}};
 </script></body></html>
