@@ -71,12 +71,13 @@
 @media(max-width:850px){#overlay{top:55px}#designView{inset:50px 10px 15px}}
 #artPlacement{margin-top:12px}
 #artPlacement summary{cursor:pointer;font-size:13px;margin-bottom:10px}
+#printabilityNote{color:#e6bf8b;line-height:1.4;margin:7px 0 0;font-size:12px}
 </style>
 <script type="importmap">{"imports":{"three":"https://esm.sh/three@0.180.0","three/addons/":"https://esm.sh/three@0.180.0/examples/jsm/"}}</script>
 <script src="https://cdn.jsdelivr.net/npm/clipper-lib@6.4.2/clipper.js"></script>
 <script src="./polygon-geometry.js"></script>
 </head><body><header><div><h1>Leather Stamp Studio <small> / V3.2 design preview</small></h1><small>SVG → printable STL · designed for leather embossing dies</small></div><small>Browser-based · mm</small></header><main><aside>
-<div class="workflow" aria-label="Generate and export controls"><div class="step-hint">CREATE → CHECK → EXPORT</div><div class="buttons"><button id="build" title="Ctrl/⌘ + Enter">Generate 3D stamp</button><button class="secondary" id="export" disabled title="Generate and pass mesh checks before exporting">Download STL</button></div><small id="readyState" role="status" aria-live="polite">Sample artwork ready · Generate to preview</small></div>
+<div class="workflow" aria-label="Generate and export controls"><div class="step-hint">CREATE → CHECK → EXPORT</div><div class="buttons"><button id="build" title="Ctrl/⌘ + Enter">Generate 3D stamp</button><button class="secondary" id="export" disabled title="Generate and pass mesh checks before exporting">Download STL</button></div><small id="readyState" role="status" aria-live="polite">Sample artwork ready · Generate to preview</small><p id="printabilityNote" role="status" hidden></p></div>
 
 <section class="ui-section"><h2>01 / Your artwork</h2>
 <div class="field"><label for="file" class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Choose or drop SVG artwork"><strong>＋ Choose an SVG or drop it here</strong><small>Filled vector artwork works best</small><input id="file" type="file" accept=".svg,image/svg+xml"></label><div id="artworkName">Using included paw-print example</div></div>
@@ -160,7 +161,16 @@ import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {SVGLoader} from 'three/addons/loaders/SVGLoader.js';
 import {STLExporter} from 'three/addons/exporters/STLExporter.js';
 const $=id=>document.getElementById(id), status=$('status');
-function progress(message,kind='pending'){$('readyState').textContent=message;$('readyState').className=kind==='ok'?'ready-ok':kind==='error'?'ready-err':'';}
+function showPrintabilityNote(offset){
+ const parts=[];
+ if(offset?.fewerHoles)parts.push(`${offset.fewerHoles} fewer ${offset.fewerHoles===1?'hole':'holes'}`);
+ if(offset?.fewerRegions)parts.push(`${offset.fewerRegions} fewer filled ${offset.fewerRegions===1?'region':'regions'}`);
+ const note=$('printabilityNote');
+ const message=parts.length?`Printability note · Thickness adjustment leaves ${parts.join(' and ')}. Check the 2D design for lost detail.`:'';
+ if(note.textContent!==message)note.textContent=message;
+ note.hidden=!message;
+}
+function progress(message,kind='pending'){if(kind==='error'||(kind==='pending'&&$('designView').hidden))showPrintabilityNote();$('readyState').textContent=message;$('readyState').className=kind==='ok'?'ready-ok':kind==='error'?'ready-err':'';}
 function fileLabel(name){$('artworkName').textContent=name?`Loaded: ${name}`:'Using included paw-print example';}
 function showLoadError(error){status.textContent='Could not load SVG: '+error.message;status.className='bad';$('export').disabled=true;progress('SVG load failed · Check the file','error');}
 
@@ -328,7 +338,7 @@ for(const [changed,other] of [['artWidth','artHeight'],['artHeight','artWidth']]
    if($('customArt').checked)growBaseForExactArtwork();
  });
 }
-function markDirty(){scheduleDesignPreview();if(finalMesh){$('export').disabled=true;status.className='';status.textContent='Settings changed. Generate 3D stamp again before exporting.';progress('Changes pending · Regenerate before export');}}
+function markDirty(){if($('designView').hidden)showPrintabilityNote();scheduleDesignPreview();if(finalMesh){$('export').disabled=true;status.className='';status.textContent='Settings changed. Generate 3D stamp again before exporting.';progress('Changes pending · Regenerate before export');}}
 for(const el of document.querySelectorAll('aside input, aside select')){
  if(el.type!=='file')el.addEventListener(['number','range'].includes(el.type)?'input':'change',markDirty);
 }
@@ -403,7 +413,7 @@ function geometryReport(g){
 
 // Construct one closed boundary representation from 2D regions.
 // No 3D Boolean or independent overlapping shells. Every surface is emitted once.
-const {CS,xyPath,cleanLoop,region,rings,paths,offsetArtworkPaths}=window.createPolygonGeometry(window.ClipperLib);
+const {CS,xyPath,cleanLoop,region,rings,paths,offsetArtwork}=window.createPolygonGeometry(window.ClipperLib);
 function shapeLoops(shape,detail){const outer=cleanLoop(xyPath(shape.extractPoints(detail).shape));const holes=shape.extractPoints(detail).holes.map(x=>cleanLoop(xyPath(x)));return [outer,...holes].filter(p=>p.length>=3)}
 function baseLoops(shape,detail){return shapeLoops(shape,detail)}
 // V3.0: weld only *exposed boundary endpoints* that differ by
@@ -813,7 +823,8 @@ function prepareDesign(){
  if(!$('designOffset').validity.valid)
    throw Error('Enter a design thickness adjustment from -0.50 to +0.50 mm.');
  const offsetMm=getNumber('designOffset');
- let artP=offsetArtworkPaths(originalArtP,offsetMm);
+ const offset=offsetArtwork(originalArtP,offsetMm);
+ let artP=offset.artworkPaths;
  const x=getNumber('artX'),y=getNumber('artY'),rotation=getNumber('artRotation')%360;
  if(Math.abs(x)>200||Math.abs(y)>200)throw Error('Artwork offsets must be between -200 and 200 mm.');
  const placed=x!==0||y!==0||rotation!==0;
@@ -838,7 +849,7 @@ function prepareDesign(){
  const inside=region(C.ClipType.ctIntersection,paths(artTree),paths(baseTree));
  const artwork=paths(inside);
  if(!artwork.length)throw Error('Artwork does not intersect the stamp base');
- return {baseTree,inside,artwork,artP,w,h,kind,shapes,raw,optimized,effectiveTolerance,offsetMm};
+ return {baseTree,inside,artwork,artP,w,h,kind,shapes,raw,optimized,effectiveTolerance,offsetMm,offset};
 }
 
 function svgPath(loops){
@@ -848,7 +859,8 @@ function svgPath(loops){
 let dragSource, artworkDrag;
 function renderDesignPreview(){
  try{
-   const {baseTree,artwork,artP,raw}=prepareDesign();
+   const {baseTree,artwork,artP,raw,offset}=prepareDesign();
+   showPrintabilityNote(offset);
    updateArtworkSummary(raw);
    const plate=paths(baseTree);
    let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
@@ -867,6 +879,7 @@ function renderDesignPreview(){
    const type=$('mode').value==='raised'?'Raised artwork':'Recessed artwork';
    $('designStatus').textContent=`${type} in gold · Base in blue-gray · Drag artwork to move`;
  }catch(error){
+   showPrintabilityNote();
    dragSource=undefined;
    const keepPreview=error instanceof ArtworkSizeError&&$('customArt').checked&&renderedSVG===svgText;
    $('designView').classList.toggle('show-last-design',keepPreview);
@@ -1008,6 +1021,7 @@ function build(){try{$('build').disabled=true;$('export').disabled=true;status.c
  const bounds=new THREE.Box3().setFromObject(finalMesh),center=bounds.getCenter(new THREE.Vector3()),span=bounds.getSize(new THREE.Vector3()),radius=Math.max(span.x,span.y,span.z,15);controls.target.copy(center);camera.position.copy(center).add(new THREE.Vector3(radius*1.5,-radius*1.7,radius*1.6));camera.near=.1;camera.far=Math.max(2000,radius*20);camera.updateProjectionMatrix();controls.update();
  status.textContent=`Artwork: ${raw.artW.toFixed(2)} × ${raw.artH.toFixed(2)} mm · Base: ${w.toFixed(2)} × ${h.toFixed(2)} mm\n${raised?'Debossing (raised stamp)':'Embossing (recessed die)'} · ${kind} base · ${shapes.length} SVG shapes / ${optimized.vertices.toLocaleString()} optimized vertices · ${effectiveTolerance.toFixed(3)} mm tolerance · ${report.triangles.toLocaleString()} triangles\nMesh check: ${report.boundary} boundary edges, ${report.nonmanifold} non-manifold edges, ${report.degenerate} degenerate triangles, ${report.winding} winding conflicts. ${issues?'EXPORT BLOCKED: invalid mesh.':'Basic manifold checks passed. Export enabled.'}\nRequested edge: ${bevel.toFixed(3)} mm · Applied edge: ${appliedBevel.toFixed(3)} mm${appliedBevel<bevel?" (automatically reduced for mesh integrity)":""}.\n${attemptLog.join(' | ')}\nDesign thickness adjustment: ${offsetMm>=0?'+':''}${offsetMm.toFixed(2)} mm.`;
  status.className=issues?'bad':'good';$('export').disabled=!!issues;progress(issues?'Mesh invalid · Export blocked':'Mesh validated · STL ready to download',issues?'error':'ok');
+ showPrintabilityNote(design.offset);
  }catch(e){status.textContent='Generation failed: '+e.message;status.className='bad';progress('Generation failed · Review the details','error');console.error(e)}finally{$('build').disabled=false}}
 
 function syncSimpleUI(){

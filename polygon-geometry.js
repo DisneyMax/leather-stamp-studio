@@ -53,19 +53,25 @@
 
   // The input is already sized in millimeters. Expanding filled regions
   // contracts their holes, and shrinking filled regions expands their holes.
-  function offsetArtworkPaths(originalPaths, offsetMm) {
-    if (Math.abs(offsetMm) < 0.000001) return originalPaths;
+  function offsetArtwork(originalPaths, offsetMm) {
+    if (Math.abs(offsetMm) < 0.000001) return { artworkPaths: originalPaths, fewerHoles: 0, fewerRegions: 0 };
     const { ClipperOffset, ClipType, JoinType, EndType } = clipperLibrary;
-    const canonical = paths(region(ClipType.ctUnion, originalPaths));
+    const canonical = rings(region(ClipType.ctUnion, originalPaths));
     const offset = new ClipperOffset(2, 0.015 * CS);
     const result = [];
-    offset.AddPaths(canonical, JoinType.jtRound, EndType.etClosedPolygon);
+    offset.AddPaths(canonical.map(({ path }) => path), JoinType.jtRound, EndType.etClosedPolygon);
     offset.Execute(result, offsetMm * CS);
     if (!result.length) throw Error('Design thickness adjustment removed all artwork. Reduce the negative offset.');
-    const output = paths(region(ClipType.ctUnion, result));
+    const output = rings(region(ClipType.ctUnion, result));
     if (!output.length) throw Error('Design offset produced no usable filled artwork.');
-    return output;
+    const originalHoles = canonical.filter(({ hole }) => hole).length;
+    const outputHoles = output.filter(({ hole }) => hole).length;
+    return {
+      artworkPaths: output.map(({ path }) => path),
+      fewerHoles: Math.max(0, originalHoles - outputHoles),
+      fewerRegions: Math.max(0, canonical.length - originalHoles - (output.length - outputHoles)),
+    };
   }
 
-  return { CS, xyPath, cleanLoop, region, rings, paths, offsetArtworkPaths };
+  return { CS, xyPath, cleanLoop, region, rings, paths, offsetArtwork };
 });

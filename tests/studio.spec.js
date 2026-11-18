@@ -186,17 +186,28 @@ test('offsets can close a small hole or remove a narrow island', async ({ page }
     '<path fill-rule="evenodd" d="M0 0H32V32H0Z M15.5 15.5H16.3V16.3H15.5Z M15.7 15.7H16V16Z"/>',
   );
   await load(page, detailed, { edge: 'sharp', mirror: false, designOffset: 0.5 });
+  await page.getByRole('button', { name: '2D design' }).click();
+  const note = page.locator('#printabilityNote');
+  await expect(note).toContainText('1 fewer hole and 1 fewer filled region');
   await generate(page);
+  await expect(note).toContainText('1 fewer hole');
+  await expect(page.locator('#export')).toBeEnabled();
   const thick = parseSTL(await download(page, '#export'));
   expect(surfaceHeight(thick, 0.2, 0.2)).toBe(7.5);
   expectClosedMesh(thick);
   await page.locator('#advancedSettings > summary').click();
   await page.locator('#designOffset').fill('-0.5');
   await generate(page);
+  await expect(note).toContainText('1 fewer filled region');
+  await expect(note).not.toContainText('fewer hole');
   const thin = parseSTL(await download(page, '#export'));
   expect(surfaceHeight(thin, -0.15, 0.15)).toBe(6);
   expect(surfaceHeight(thin, 2, 2)).toBe(7.5);
   expectClosedMesh(thin);
+  await page.getByRole('button', { name: '2D design' }).click();
+  await page.locator('#designOffset').fill('0');
+  await expect(note).toBeHidden();
+  await expect(page.locator('#designArt')).toHaveAttribute('d', /^M/);
 });
 
 for (const edge of ['chamfer', 'round']) {
