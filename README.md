@@ -1,28 +1,30 @@
 # Leather Stamp Studio
 
-Browser-based SVG-to-STL tool for making 3D-printable leather stamps.
+Browser-based SVG-to-STL utility for 3D-printable leather stamps, deployed via GitHub Pages.
 
-## Current release: V2.7
+## Stable release: V3.0
 
-- Import SVG designs, including compound paths and enclosed holes.
-- Create raised (debossing) or recessed (embossing) stamp geometry.
-- Choose rectangle, rounded rectangle, circle, or SVG-contour bases.
-- Adjust base thickness, relief depth, mirroring, and edge profiles.
-- Preview stamp geometry and export STL.
-- Save and load project configurations.
-- Validate generated meshes before export.
-- Automatically reduce a chamfer width when necessary for valid topology, reporting the requested and applied widths.
+### Features
+- Load SVG artwork, including compound paths, holes, and detailed designs.
+- Raised (debossing) and recessed (embossing) geometry.
+- Independent artwork width/height with proportional lock, or fit to the backing plate.
+- Adjustable backing plate, relief depth, mirroring and edge style (Sharp, Chamfered, Rounded).
+- Drag-and-drop SVG import, 3D preview, Fit View, and STL download.
+- Save/load project JSON and clear stale-preview/export status.
+- Chamfer/radius size recovery and geometric repair of narrowly scoped near-coincident boundary vertices and tiny slivers.
+- Mesh validation blocks STL export when boundaries, non-manifold edges or degenerate faces remain.
 
-## Run locally
+### Validation and release history
+The user tested three SVG designs (Dacha Craft logo, Bunny, Paw print) in Sharp, Chamfered and Rounded profiles. All nine combinations passed built-in mesh checks. The user additionally confirmed successful Bambu Studio imports for rounded Bunny, rounded Dacha Craft, chamfered Bunny and rounded Paw print, with no repair warnings. Physical leather impression and long-run durability tests are not yet complete.
 
-Download `index.html` and open it in a modern browser. JavaScript dependencies may load from external CDNs, so internet access can be required.
+Mesh validation is a basic topology check and does not guarantee perfect printability or strength for every SVG.
 
-## Validation history
+### Run
+Open `index.html` in a modern browser. Some dependencies are loaded from external CDNs, so an internet connection may be required.
 
-Dacha Craft logo V2.7 test: 14,556 triangles, zero boundary edges, zero non-manifold edges, and zero degenerate triangles. Requested 0.250 mm chamfer automatically reduced to 0.175 mm. Bambu Studio imported the STL without repair warnings. Physical print and leather impression testing are pending.
+### Hosting
+GitHub Pages deploys the `main` branch root `index.html` at:
+https://disneymax.github.io/leather-stamp-studio/
 
-## GitHub Pages
-
-In the repository, open **Settings → Pages**, choose **Deploy from a branch**, then select **main** and **/(root)**. GitHub Pages will serve `index.html`.
-
-Basic mesh validation does not guarantee print quality or physical strength.
+### Development
+Use a feature branch and pull request for future changes; preserve `main` as the tested release.
