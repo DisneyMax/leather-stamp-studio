@@ -332,3 +332,39 @@ test('Exact size keeps the 2D preview visible while editing dimensions', async (
   expect(await design.evaluate(path => path.getBBox().width)).toBeCloseTo(24, 3);
   await generate(page);
 });
+
+test('Exact size grows the base to preserve the artwork margin and exports the larger plate', async ({ page }) => {
+  await load(page, artwork('<path d="M0 0H1165V1000H0Z"/>'), { edge: 'sharp', margin: 6 });
+  await page.getByRole('button', { name: '2D design' }).click();
+  await page.locator('#customArt').check();
+  await page.locator('#artHeight').fill('30');
+  await expect(page.locator('#artWidth')).toHaveValue('34.950');
+  await expect(page.locator('#width')).toHaveValue('47');
+  await expect(page.locator('#height')).toHaveValue('42');
+  await expect(page.locator('#sizeSummary')).toContainText('Artwork 34.95 × 30.00 mm');
+  await expect(page.locator('#designStatus')).toContainText('Raised artwork');
+  await generate(page);
+  const vertices = parseSTL(await download(page, '#export')).flat();
+  expect(Math.max(...vertices.map(([x]) => x)) - Math.min(...vertices.map(([x]) => x))).toBe(47);
+  expect(Math.max(...vertices.map(([, y]) => y)) - Math.min(...vertices.map(([, y]) => y))).toBe(42);
+  await page.locator('#lockAspect').uncheck();
+  await page.locator('#artWidth').fill('40');
+  await expect(page.locator('#width')).toHaveValue('52');
+  await expect(page.locator('#height')).toHaveValue('42');
+  await page.locator('#artWidth').fill('20');
+  await expect(page.locator('#width')).toHaveValue('52');
+  await page.locator('#artWidth').fill('200');
+  await expect(page.locator('#width')).toHaveValue('52');
+  await expect(page.locator('#export')).toBeDisabled();
+});
+
+test('ellipse bases grow enough to preserve clearance at artwork corners', async ({ page }) => {
+  await load(page, compound, { edge: 'sharp', baseShape: 'circle' });
+  await page.getByRole('button', { name: '2D design' }).click();
+  await page.locator('#customArt').check();
+  await page.locator('#artWidth').fill('34');
+  await expect(page.locator('#width')).toHaveValue('57');
+  await expect(page.locator('#height')).toHaveValue('57');
+  await expect(page.locator('#designStatus')).toContainText('Raised artwork');
+  await generate(page);
+});

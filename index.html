@@ -73,6 +73,7 @@
 <div id="exactSizeFields" class="exact-fields">
 <div class="pair"><div class="field"><label for="artWidth">Artwork width (mm)</label><input id="artWidth" type="number" min="0.5" max="200" step="0.5" value="32" disabled></div><div class="field"><label for="artHeight">Artwork height (mm)</label><input id="artHeight" type="number" min="0.5" max="200" step="0.5" value="32" disabled></div></div>
 <div class="check"><input id="lockAspect" type="checkbox" checked><label for="lockAspect">Keep original proportions</label></div>
+<p class="hint">The base grows as needed when you edit the artwork size.</p>
 </div>
 <div class="pair"><div class="field"><label for="width">Base width (mm)</label><input id="width" type="number" min="10" max="200" step="1" value="40"></div><div class="field"><label for="height">Base height (mm)</label><input id="height" type="number" min="10" max="200" step="1" value="40"></div></div>
 <div class="field"><label for="baseShape">Base shape</label><select id="baseShape"><option value="rect">Rectangle</option><option value="roundrect">Rounded rectangle</option><option value="circle">Circle / ellipse</option><option value="contour">SVG contour (convex silhouette)</option></select></div>
@@ -252,13 +253,40 @@ function setCustomFromFit(){
  }catch(e){$('sizeSummary').textContent=e.message}
 }
 for(const id of ['fitArt','customArt'])$(id).addEventListener('change',()=>{if($('customArt').checked){setCustomFromFit();}syncSizingUI();markDirty();});
+function growBaseForExactArtwork(){
+ const artW=$('artWidth').valueAsNumber,artH=$('artHeight').valueAsNumber;
+ const w=$('width').valueAsNumber,h=$('height').valueAsNumber,margin=$('margin').valueAsNumber;
+ if(![artW,artH,w,h,margin].every(Number.isFinite)||Math.min(artW,artH,margin)<.5||Math.min(w,h)<10)return;
+ let innerW=Math.max(w-2*margin,artW),innerH=Math.max(h-2*margin,artH);
+ if($('baseShape').value==='circle'){
+   try{
+     const {pts,minX,minY,dx,dy}=artworkBounds(designShapes());
+     let scale=1;
+     for(const {x,y} of pts){
+       scale=Math.max(scale,Math.hypot(
+         (2*(x-minX)/dx-1)*artW/innerW,
+         (2*(y-minY)/dy-1)*artH/innerH
+       ));
+     }
+     innerW*=scale;
+     innerH*=scale;
+   }catch{return}
+ }
+ const nextW=Math.min(200,Math.ceil(innerW+2*margin-1e-9));
+ const nextH=Math.min(200,Math.ceil(innerH+2*margin-1e-9));
+ // Leave impossible requests to the existing size validation.
+ if(innerW+2*margin>200+1e-9||innerH+2*margin>200+1e-9)return;
+ if(innerW+2*margin>w+1e-9)$('width').value=nextW;
+ if(innerH+2*margin>h+1e-9)$('height').value=nextH;
+ updateArtworkSummary({artW,artH});
+}
 for(const [changed,other] of [['artWidth','artHeight'],['artHeight','artWidth']]){
  $(changed).addEventListener('input',()=>{
-   if(!$('lockAspect').checked||currentAspect<=0)return;
    const value=$(changed).valueAsNumber;
-   if(Number.isFinite(value)&&value>0){
+   if($('lockAspect').checked&&currentAspect>0&&Number.isFinite(value)&&value>0){
      $(other).value=formatFittedSize(changed==='artWidth'?value/currentAspect:value*currentAspect);
    }
+   if($('customArt').checked)growBaseForExactArtwork();
  });
 }
 function markDirty(){scheduleDesignPreview();if(finalMesh){$('export').disabled=true;status.className='';status.textContent='Settings changed. Generate 3D stamp again before exporting.';progress('Changes pending · Regenerate before export');}}
@@ -755,7 +783,8 @@ function svgPath(loops){
 
 function renderDesignPreview(){
  try{
-   const {baseTree,artwork}=prepareDesign();
+   const {baseTree,artwork,raw}=prepareDesign();
+   updateArtworkSummary(raw);
    const plate=paths(baseTree);
    let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
    for(const loop of plate)for(const {X,Y} of loop){
