@@ -307,3 +307,28 @@ test('invalid 2D inputs clear stale contours and recover without generating a me
   await expect(page.locator('#designArt')).toHaveAttribute('d', /^M/);
   await expect(page.locator('#export')).toBeDisabled();
 });
+
+test('Exact size keeps the 2D preview visible while editing dimensions', async ({ page }) => {
+  await load(page, artwork('<path d="M0 0H40V32.001H0Z"/>'), { edge: 'sharp', height: 33.6008 });
+  await page.getByRole('button', { name: '2D design' }).click();
+  const design = page.locator('#designArt');
+  await expect(design).toHaveAttribute('d', /^M/);
+
+  await page.locator('#customArt').check();
+  await expect(page.locator('#designStatus')).toContainText('Raised artwork');
+  await expect(design).toHaveAttribute('d', /^M/);
+  await page.locator('#artWidth').fill('32');
+  await expect(page.locator('#artHeight')).toHaveValue('25.600');
+
+  await page.locator('#artWidth').fill('');
+  await expect(page.locator('#designStatus')).toContainText('Showing the last valid design');
+  await expect(design).toHaveAttribute('d', /^M/);
+  await expect(page.locator('#export')).toBeDisabled();
+
+  const previous = await design.getAttribute('d');
+  await page.locator('#artWidth').fill('24');
+  await expect(page.locator('#designStatus')).toContainText('Raised artwork');
+  await expect(design).not.toHaveAttribute('d', previous);
+  expect(await design.evaluate(path => path.getBBox().width)).toBeCloseTo(24, 3);
+  await generate(page);
+});

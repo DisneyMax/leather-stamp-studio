@@ -46,6 +46,7 @@
 #designCanvas{width:100%;height:100%;min-height:0}
 #designPlate{fill:#293744;stroke:#8396a8;stroke-width:1.5px;vector-effect:non-scaling-stroke}
 #designArt{fill:#d9a76b}
+#designView.show-last-design #designCanvas{opacity:.45}
 #designStatus{margin:0 auto;text-align:center;background:#151c25;padding:5px 10px;border-radius:6px}
 #stage.show-design #status{display:none}
 #stage.show-design #viewport{visibility:hidden}
@@ -214,6 +215,7 @@ function artworkBounds(shapes){
  const dx=maxX-minX,dy=maxY-minY;if(dx<1e-8||dy<1e-8)throw Error('Artwork has zero size');
  return {pts,minX,minY,maxX,maxY,dx,dy};
 }
+class ArtworkSizeError extends Error {}
 function getArtwork(shapes,w,h,margin,mirror,sizing,kind){
  const b=artworkBounds(shapes);
  const availW=w-2*margin,availH=h-2*margin;if(availW<=0||availH<=0)throw Error('Artwork margin exceeds base size');
@@ -226,8 +228,8 @@ function getArtwork(shapes,w,h,margin,mirror,sizing,kind){
  }
  const artW=sizing?.mode==='custom'?sizing.width:b.dx*fitScale;
  const artH=sizing?.mode==='custom'?sizing.height:b.dy*fitScale;
- if(!Number.isFinite(artW)||!Number.isFinite(artH)||artW<.5||artH<.5||artW>200||artH>200)throw Error('Artwork width and height must be between 0.5 and 200 mm.');
- if(artW>availW+1e-6||artH>availH+1e-6)throw Error(`Artwork ${artW.toFixed(2)} × ${artH.toFixed(2)} mm exceeds the ${availW.toFixed(2)} × ${availH.toFixed(2)} mm area inside the base margin. Increase the base, reduce artwork size, or reduce the margin.`);
+ if(!Number.isFinite(artW)||!Number.isFinite(artH)||artW<.5||artH<.5||artW>200||artH>200)throw new ArtworkSizeError('Artwork width and height must be between 0.5 and 200 mm.');
+ if(artW>availW+1e-6||artH>availH+1e-6)throw new ArtworkSizeError(`Artwork ${artW.toFixed(2)} × ${artH.toFixed(2)} mm exceeds the ${availW.toFixed(2)} × ${availH.toFixed(2)} mm area inside the base margin. Increase the base, reduce artwork size, or reduce the margin.`);
  const sx=artW/b.dx,sy=artH/b.dy;
  const transformed=[];for(const shape of shapes){const clone=shape.clone();const change=path=>{for(const c of path.curves){for(const name of ['v0','v1','v2','v3']){const p=c[name];if(p?.isVector2){p.x=(p.x-cx)*sx*(mirror?-1:1);p.y=-(p.y-cy)*sy}}}};change(clone);for(const hole of clone.holes)change(hole);transformed.push(clone)}
  const points=b.pts.map(p=>new THREE.Vector2((p.x-cx)*sx*(mirror?-1:1),-(p.y-cy)*sy));return {transformed,points,artW,artH,ratio:b.dx/b.dy};
@@ -236,9 +238,29 @@ let currentAspect=1;
 function syncSizingUI(){const custom=$('customArt').checked;for(const id of ['artWidth','artHeight'])$(id).disabled=!custom;$('margin').disabled=false;}
 function refreshAspectFromSVG(){try{const b=artworkBounds(normalizeShapes(svgText));currentAspect=b.dx/b.dy;return true}catch(e){return false}}
 function updateArtworkSummary(raw){$('sizeSummary').textContent=`Artwork ${raw.artW.toFixed(2)} × ${raw.artH.toFixed(2)} mm · base ${getNumber('width').toFixed(1)} × ${getNumber('height').toFixed(1)} mm`;}
-function setCustomFromFit(){try{const shapes=normalizeShapes(svgText),r=getArtwork(shapes,getNumber('width'),getNumber('height'),getNumber('margin'),false,{mode:'fit'},$('baseShape').value);currentAspect=r.ratio;$('artWidth').value=(Math.floor(r.artW*1000)/1000).toFixed(3);$('artHeight').value=(Math.floor(r.artH*1000)/1000).toFixed(3);$('sizeSummary').textContent=`Artwork ${r.artW.toFixed(2)} × ${r.artH.toFixed(2)} mm`;}catch(e){$('sizeSummary').textContent=e.message}}
+// Rounding up can push an aspect-locked dimension past the base margin.
+function formatFittedSize(value){
+ return (Math.floor(value*1000+1e-9)/1000).toFixed(3);
+}
+function setCustomFromFit(){
+ try{
+   const r=getArtwork(designShapes(),getNumber('width'),getNumber('height'),getNumber('margin'),false,{mode:'fit'},$('baseShape').value);
+   currentAspect=r.ratio;
+   $('artWidth').value=formatFittedSize(r.artW);
+   $('artHeight').value=formatFittedSize(r.artH);
+   $('sizeSummary').textContent=`Artwork ${r.artW.toFixed(2)} × ${r.artH.toFixed(2)} mm`;
+ }catch(e){$('sizeSummary').textContent=e.message}
+}
 for(const id of ['fitArt','customArt'])$(id).addEventListener('change',()=>{if($('customArt').checked){setCustomFromFit();}syncSizingUI();markDirty();});
-for(const [changed,other] of [['artWidth','artHeight'],['artHeight','artWidth']])$(changed).addEventListener('input',()=>{if($('lockAspect').checked&&currentAspect>0){const v=Number($(changed).value);if(Number.isFinite(v)&&v>0)$(other).value=Number(changed==='artWidth'?v/currentAspect:v*currentAspect).toFixed(3);}});
+for(const [changed,other] of [['artWidth','artHeight'],['artHeight','artWidth']]){
+ $(changed).addEventListener('input',()=>{
+   if(!$('lockAspect').checked||currentAspect<=0)return;
+   const value=$(changed).valueAsNumber;
+   if(Number.isFinite(value)&&value>0){
+     $(other).value=formatFittedSize(changed==='artWidth'?value/currentAspect:value*currentAspect);
+   }
+ });
+}
 function markDirty(){scheduleDesignPreview();if(finalMesh){$('export').disabled=true;status.className='';status.textContent='Settings changed. Generate 3D stamp again before exporting.';progress('Changes pending · Regenerate before export');}}
 for(const el of document.querySelectorAll('aside input, aside select')){
  if(el.type!=='file')el.addEventListener(['number','range'].includes(el.type)?'input':'change',markDirty);
@@ -683,7 +705,7 @@ function buildMesh({baseTree,inside,artwork},base,depth,raised,edge,bevel){
  }
  let g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(coords,3));g.setIndex(faces);g=g.toNonIndexed();g.computeVertexNormals();return g;
 }
-let cachedSVG, cachedShapes, designFrame;
+let cachedSVG, cachedShapes, designFrame, renderedSVG;
 function designShapes(){
  if(cachedSVG!==svgText){
    cachedShapes=normalizeShapes(svgText);
@@ -707,7 +729,7 @@ function prepareDesign(){
  const effectiveTolerance=Math.max(accuracy,requestedSimplify),optimized=optimizeShapes(raw.transformed,curve,effectiveTolerance);
  // The source artwork bounds fit in the base's rectangular safe area. For an
  // elliptical base, check each actual artwork vertex against the inner ellipse.
- if(kind==='circle')for(const pt of raw.points){const rx=w/2-margin,ry=h/2-margin;if(rx<=0||ry<=0||(pt.x/rx)**2+(pt.y/ry)**2>1.00001)throw Error('Artwork extends beyond the safe area of the ellipse base. Reduce artwork size or margin, or choose a rectangular base.');}
+ if(kind==='circle')for(const pt of raw.points){const rx=w/2-margin,ry=h/2-margin;if(rx<=0||ry<=0||(pt.x/rx)**2+(pt.y/ry)**2>1.00001)throw new ArtworkSizeError('Artwork extends beyond the safe area of the ellipse base. Reduce artwork size or margin, or choose a rectangular base.');}
  const outline=baseOutline(kind,w,h,corner,raw.points,margin);
  const baseP=baseLoops(outline,Math.min(curve,96));
  const originalArtP=optimized.shapes.flatMap(shape=>shapeLoops(shape,3));
@@ -744,12 +766,19 @@ function renderDesignPreview(){
    $('designCanvas').setAttribute('viewBox',`${minX-padding} ${minY-padding} ${maxX-minX+2*padding} ${maxY-minY+2*padding}`);
    $('designPlate').setAttribute('d',svgPath(plate));
    $('designArt').setAttribute('d',svgPath(artwork));
+   renderedSVG=svgText;
+   $('designView').classList.remove('show-last-design');
    const type=$('mode').value==='raised'?'Raised artwork':'Recessed artwork';
    $('designStatus').textContent=`${type} in gold · Base in blue-gray`;
  }catch(error){
-   $('designPlate').removeAttribute('d');
-   $('designArt').removeAttribute('d');
-   $('designStatus').textContent=error.message;
+   const keepPreview=error instanceof ArtworkSizeError&&$('customArt').checked&&renderedSVG===svgText;
+   $('designView').classList.toggle('show-last-design',keepPreview);
+   if(!keepPreview){
+     $('designPlate').removeAttribute('d');
+     $('designArt').removeAttribute('d');
+     renderedSVG=undefined;
+   }
+   $('designStatus').textContent=keepPreview?`${error.message} Showing the last valid design.`:error.message;
  }
 }
 
