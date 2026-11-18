@@ -368,3 +368,51 @@ test('ellipse bases grow enough to preserve clearance at artwork corners', async
   await expect(page.locator('#designStatus')).toContainText('Raised artwork');
   await generate(page);
 });
+
+test.describe('desktop preview layout on a high-density screen', () => {
+  test.use({ viewport: { width: 1280, height: 640 }, deviceScaleFactor: 2 });
+
+  test('fits the page while keeping the settings scrollable', async ({ page }) => {
+    const viewport = page.locator('#viewport');
+    const canvas = viewport.locator('canvas');
+    const expectPageFits = async () => {
+      const overflow = await page.evaluate(() => ({
+        horizontal: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        vertical: document.documentElement.scrollHeight - document.documentElement.clientHeight,
+      }));
+      expect(overflow).toEqual({ horizontal: 0, vertical: 0 });
+    };
+
+    const bounds = await viewport.boundingBox();
+    expect(await canvas.boundingBox()).toEqual(bounds);
+    await expect(canvas).toHaveAttribute('width', String(Math.floor(bounds.width * 2)));
+    await expectPageFits();
+
+    const sidebar = page.locator('aside');
+    await page.locator('#advancedSettings > summary').click();
+    await page.locator('#resetDefaults').scrollIntoViewIfNeeded();
+    expect(await sidebar.evaluate(element => element.scrollTop)).toBeGreaterThan(0);
+    await expectPageFits();
+
+    await page.getByRole('button', { name: '2D design' }).click();
+    await expect(page.locator('#designArt')).toHaveAttribute('d', /^M/);
+    await expectPageFits();
+    await page.getByRole('button', { name: '3D preview' }).click();
+    await page.setViewportSize({ width: 1024, height: 600 });
+    await expect.poll(async () => (await canvas.boundingBox()).width).toBe(674);
+    await expect(canvas).toHaveAttribute('width', '1348');
+    await expectPageFits();
+  });
+});
+
+test('narrow screens can scroll down to the preview without horizontal overflow', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 650 });
+  const root = await page.evaluate(() => ({
+    scrollWidth: document.documentElement.scrollWidth,
+    scrollHeight: document.documentElement.scrollHeight,
+  }));
+  expect(root.scrollWidth).toBe(390);
+  expect(root.scrollHeight).toBeGreaterThan(650);
+  await page.getByRole('button', { name: '2D design' }).click();
+  await expect(page.locator('#designArt')).toHaveAttribute('d', /^M/);
+});
