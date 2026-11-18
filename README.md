@@ -28,3 +28,9 @@ https://disneymax.github.io/leather-stamp-studio/
 
 ### Development
 Use a feature branch and pull request for future changes; preserve `main` as the tested release.
+
+### Automated tests (V3.1)
+Run `npm ci`, `npx playwright install chromium`, and `npm test`. Set
+`LEATHER_STAMP_CHROMIUM` to use an existing Chromium executable. The tests
+serve the production page and its pinned library versions locally. They cover
+the browser controls, project files, and the topology of downloaded STLs.

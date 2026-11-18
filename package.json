@@ -1,0 +1,18 @@
+{
+  "name": "leather-stamp-studio",
+  "version": "1.0.0",
+  "description": "Browser-based SVG-to-STL utility for 3D-printable leather stamps, deployed via GitHub Pages.",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DisneyMax/leather-stamp-studio.git"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.1",
+    "clipper-lib": "6.4.2",
+    "three": "0.180.0"
+  },
+  "private": true
+}
