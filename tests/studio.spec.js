@@ -479,3 +479,53 @@ test('loading an SVG opens 2D, and generating the stamp switches back to 3D', as
   await expect(page.locator('#viewport canvas')).toBeVisible();
   await expect(page.locator('#export')).toBeEnabled();
 });
+
+test('dragging snaps to center, updates numeric offsets and saves the exported placement', async ({ page }) => {
+  const svg = artwork('<path d="M0 0H12V6H0Z"/>');
+  await load(page, svg, { edge: 'sharp', artSizing: 'custom', artWidth: 12, artHeight: 6 });
+  await page.getByRole('button', { name: '2D design' }).click();
+  await page.locator('#artPlacement > summary').click();
+  const design = page.locator('#designArt');
+  await expect(design).toHaveAttribute('d', /^M/);
+  const start = await page.locator('#designCanvas').evaluate(canvas => {
+    const matrix = canvas.getScreenCTM();
+    const { x, y } = new DOMPoint(0, 0).matrixTransform(matrix);
+    return { x, y, scale: matrix.a };
+  });
+  await page.mouse.move(start.x, start.y);
+  await page.mouse.down();
+  await page.mouse.move(start.x + 5 * start.scale, start.y - 4, { steps: 4 });
+  await page.mouse.up();
+  await expect(page.locator('#artY')).toHaveValue('0');
+  await expect.poll(async () => Number(await page.locator('#artX').inputValue())).toBeCloseTo(5, 1);
+  const x = await page.locator('#artX').inputValue();
+  const positioned = await design.getAttribute('d');
+
+  await page.locator('#projectSettings > summary').click();
+  const saved = JSON.parse(await download(page, '#save'));
+  expect(saved.settings).toMatchObject({ artX: x, artY: '0' });
+  await page.locator('#artX').fill('1');
+  await load(page, saved.svg, saved.settings);
+  await expect(design).toHaveAttribute('d', positioned);
+  await generate(page);
+  const triangles = parseSTL(await download(page, '#export'));
+  expect(surfaceHeight(triangles, 10, 0)).toBe(7.5);
+  expect(surfaceHeight(triangles, -5, 0)).toBe(6);
+});
+
+test('view cube switches the 3D camera and is hidden in 2D', async ({ page }) => {
+  await generate(page);
+  const canvas = page.locator('#viewport canvas');
+  const shortcuts = page.getByRole('group', { name: '3D view shortcuts' });
+  const screenshot = await canvas.screenshot();
+  await shortcuts.getByText('Top', { exact: true }).click();
+  await expect.poll(async () => (await canvas.screenshot()).equals(screenshot)).toBe(false);
+  const top = await canvas.screenshot();
+  await shortcuts.getByRole('button', { name: 'Front', exact: true }).press('Enter');
+  await expect.poll(async () => (await canvas.screenshot()).equals(top)).toBe(false);
+  await shortcuts.getByRole('button', { name: 'Right', exact: true }).press('Enter');
+  await shortcuts.getByRole('button', { name: 'Isometric' }).click();
+  await expect(page.locator('#export')).toBeEnabled();
+  await page.getByRole('button', { name: '2D design' }).click();
+  await expect(shortcuts).toBeHidden();
+});

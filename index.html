@@ -45,7 +45,25 @@
 #designView[hidden]{display:none}
 #designCanvas{width:100%;height:100%;min-height:0}
 #designPlate{fill:#293744;stroke:#8396a8;stroke-width:1.5px;vector-effect:non-scaling-stroke}
-#designArt{fill:#d9a76b}
+#designArt{fill:#d9a76b;cursor:grab;touch-action:none}
+#designView.dragging #designArt{cursor:grabbing}
+#designGuides{display:none;pointer-events:none;stroke:#d6e4f4;stroke-opacity:.7;stroke-dasharray:4 4;vector-effect:non-scaling-stroke}
+#designView.dragging #designGuides{display:block}
+#viewShortcut{position:absolute;top:63px;right:18px;z-index:2;display:grid;justify-items:center;gap:5px}
+#viewShortcut[hidden]{display:none}
+#viewCube{position:relative;width:88px;height:92px}
+#viewCube button{position:absolute;inset:0;width:100%;height:100%;padding:0;border-radius:0;background:var(--face);color:#192636}
+#viewCube button:hover,#viewCube button:focus-visible{background:#e9ca9e;outline:none}
+#viewCube button:focus-visible span{text-decoration:underline}
+#viewCube span{position:absolute;transform:translate(-50%,-50%);font-size:11px}
+#viewTop{--face:#d2dde7;clip-path:polygon(50% 2%,98% 25%,50% 48%,2% 25%)}
+#viewFront{--face:#a9bed1;clip-path:polygon(2% 27%,49% 49%,49% 96%,2% 73%)}
+#viewRight{--face:#8ea5b9;clip-path:polygon(51% 49%,98% 27%,98% 73%,51% 96%)}
+#viewTop span{left:50%;top:25%}
+#viewFront span{left:25%;top:59%}
+#viewRight span{left:75%;top:59%}
+#viewIso{padding:5px 8px;font-size:11px}
+@media(max-width:850px){#viewShortcut{right:10px;top:55px}}
 #designView.show-last-design #designCanvas{opacity:.45}
 #designStatus{margin:0 auto;text-align:center;background:#151c25;padding:5px 10px;border-radius:6px}
 #stage.show-design #status{display:none}
@@ -123,10 +141,19 @@
 <svg id="designCanvas" role="img" aria-label="Top view of the stamp artwork and base">
 <path id="designPlate" fill-rule="evenodd"></path>
 <path id="designArt" fill-rule="evenodd"></path>
+<path id="designGuides" fill="none" aria-hidden="true"></path>
 </svg>
 <p id="designStatus" class="hint" role="status"></p>
 </div>
-<div id="stageTools"><button id="toggleDesign" aria-controls="designView" type="button">2D design</button><button id="resetView" title="Recenter and fit your stamp in the 3D view">⤢ Fit view</button></div><div id="overlay"><b>3D preview</b><br>Drag to rotate · Scroll to zoom<br>Right-drag to pan</div><div id="status" aria-live="polite">Loading 3D libraries… Internet access is required when opening this HTML file.</div></div></main><div class="footer">V3.2 design preview · Tested V3.0 mesh engine · Test stamps on a leather offcut before production use.</div>
+<div id="stageTools"><button id="toggleDesign" aria-controls="designView" type="button">2D design</button><button id="resetView" title="Recenter and fit your stamp in the 3D view">⤢ Fit view</button></div>
+<div id="viewShortcut" role="group" aria-label="3D view shortcuts">
+<div id="viewCube">
+<button id="viewTop" data-direction="0,-0.0001,1" type="button" title="Top view"><span>Top</span></button>
+<button id="viewFront" data-direction="0,-1,0" type="button" title="Front view"><span>Front</span></button>
+<button id="viewRight" data-direction="1,0,0" type="button" title="Right view"><span>Right</span></button>
+</div>
+<button id="viewIso" class="secondary" data-direction="1,-1,1" type="button" title="Isometric view">Isometric</button>
+</div><div id="overlay"><b>3D preview</b><br>Drag to rotate · Scroll to zoom<br>Right-drag to pan</div><div id="status" aria-live="polite">Loading 3D libraries… Internet access is required when opening this HTML file.</div></div></main><div class="footer">V3.2 design preview · Tested V3.0 mesh engine · Test stamps on a leather offcut before production use.</div>
 <script type="module">
 import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
@@ -141,7 +168,7 @@ const sample="<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<svg id=\"Layer_1\" da
 let svgText=sample, finalMesh=null, scene, camera, renderer, controls, modelGroup;
 try{
 scene=new THREE.Scene();scene.background=new THREE.Color('#151e28');
-camera=new THREE.PerspectiveCamera(40,1,.1,2000);camera.position.set(75,-85,95);
+camera=new THREE.PerspectiveCamera(40,1,.1,2000);camera.position.set(75,-85,95);camera.up.set(0,0,1);
 renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));renderer.outputColorSpace=THREE.SRGBColorSpace;$('viewport').appendChild(renderer.domElement);
 controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.target.set(0,0,5);
 scene.add(new THREE.HemisphereLight(0xffffff,0x546173,2.2));const light=new THREE.DirectionalLight(0xffffff,2.7);light.position.set(40,-30,80);scene.add(light);
@@ -794,9 +821,10 @@ function prepareDesign(){
    // Mirror and size in artwork space, then rotate about its centered
    // origin and translate in plate coordinates. SVG view inverts model Y.
    const radians=-rotation*Math.PI/180,cos=Math.cos(radians),sin=Math.sin(radians);
+   const gridX=Math.round(x*CS),gridY=Math.round(y*CS);
    artP=artP.map(loop=>loop.map(p=>({
-     X:Math.round(p.X*cos-p.Y*sin+x*CS),
-     Y:Math.round(p.X*sin+p.Y*cos+y*CS)
+     X:Math.round(p.X*cos-p.Y*sin)+gridX,
+     Y:Math.round(p.X*sin+p.Y*cos)+gridY
    })));
  }
  const C=window.ClipperLib;
@@ -810,16 +838,17 @@ function prepareDesign(){
  const inside=region(C.ClipType.ctIntersection,paths(artTree),paths(baseTree));
  const artwork=paths(inside);
  if(!artwork.length)throw Error('Artwork does not intersect the stamp base');
- return {baseTree,inside,artwork,w,h,kind,shapes,raw,optimized,effectiveTolerance,offsetMm};
+ return {baseTree,inside,artwork,artP,w,h,kind,shapes,raw,optimized,effectiveTolerance,offsetMm};
 }
 
 function svgPath(loops){
  return loops.map(loop=>loop.map(({X,Y},index)=>`${index?'L':'M'}${X/CS} ${-Y/CS}`).join('')+'Z').join('');
 }
 
+let dragSource, artworkDrag;
 function renderDesignPreview(){
  try{
-   const {baseTree,artwork,raw}=prepareDesign();
+   const {baseTree,artwork,artP,raw}=prepareDesign();
    updateArtworkSummary(raw);
    const plate=paths(baseTree);
    let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
@@ -831,11 +860,14 @@ function renderDesignPreview(){
    $('designCanvas').setAttribute('viewBox',`${minX-padding} ${minY-padding} ${maxX-minX+2*padding} ${maxY-minY+2*padding}`);
    $('designPlate').setAttribute('d',svgPath(plate));
    $('designArt').setAttribute('d',svgPath(artwork));
+   $('designGuides').setAttribute('d',`M${minX} 0H${maxX}M0 ${minY}V${maxY}`);
+   dragSource={plate,artP,x:getNumber('artX'),y:getNumber('artY')};
    renderedSVG=svgText;
    $('designView').classList.remove('show-last-design');
    const type=$('mode').value==='raised'?'Raised artwork':'Recessed artwork';
-   $('designStatus').textContent=`${type} in gold · Base in blue-gray`;
+   $('designStatus').textContent=`${type} in gold · Base in blue-gray · Drag artwork to move`;
  }catch(error){
+   dragSource=undefined;
    const keepPreview=error instanceof ArtworkSizeError&&$('customArt').checked&&renderedSVG===svgText;
    $('designView').classList.toggle('show-last-design',keepPreview);
    if(!keepPreview){
@@ -855,15 +887,63 @@ function scheduleDesignPreview(){
  });
 }
 
+const designCanvas=$('designCanvas');
+$('designArt').addEventListener('pointerdown',event=>{
+ if(event.button!==0||artworkDrag||!dragSource||designFrame!==undefined)return;
+ const inverse=designCanvas.getScreenCTM().inverse();
+ const point=new DOMPoint(event.clientX,event.clientY).matrixTransform(inverse);
+ artworkDrag={...dragSource,inverse,point,id:event.pointerId};
+ designCanvas.setPointerCapture(event.pointerId);
+ $('designView').classList.add('dragging');
+});
+designCanvas.addEventListener('pointermove',event=>{
+ const drag=artworkDrag;
+ if(!drag||event.pointerId!==drag.id)return;
+ const point=new DOMPoint(event.clientX,event.clientY).matrixTransform(drag.inverse);
+ // Convert the eight-pixel snapping distance into design units.
+ const snapDistance=8*Math.hypot(drag.inverse.a,drag.inverse.b);
+ const snap=value=>Math.abs(value)<=snapDistance?0:Number(value.toFixed(4));
+ const x=snap(drag.x+point.x-drag.point.x);
+ const y=snap(drag.y-point.y+drag.point.y);
+ if(x===getNumber('artX')&&y===getNumber('artY'))return;
+ if(Math.abs(x)>200||Math.abs(y)>200)return;
+ const dx=Math.round(x*CS)-Math.round(drag.x*CS);
+ const dy=Math.round(y*CS)-Math.round(drag.y*CS);
+ const moved=drag.artP.map(loop=>loop.map(p=>({X:p.X+dx,Y:p.Y+dy})));
+ const C=window.ClipperLib;
+ if(paths(region(C.ClipType.ctDifference,moved,drag.plate)).length)return;
+ $('artX').value=x;
+ $('artY').value=y;
+ markDirty();
+});
+designCanvas.addEventListener('lostpointercapture',event=>{
+ if(artworkDrag?.id!==event.pointerId)return;
+ artworkDrag=undefined;
+ $('designView').classList.remove('dragging');
+});
+
 function showDesignView(showDesign){
  $('stage').classList.toggle('show-design',showDesign);
  $('designView').hidden=!showDesign;
  $('overlay').hidden=showDesign;
  $('resetView').hidden=showDesign;
+ $('viewShortcut').hidden=showDesign;
  $('toggleDesign').textContent=showDesign?'3D preview':'2D design';
  scheduleDesignPreview();
 }
 $('toggleDesign').onclick=()=>showDesignView($('designView').hidden);
+$('viewShortcut').addEventListener('click',event=>{
+ const button=event.target.closest('button[data-direction]');
+ if(!button)return;
+ const direction=new THREE.Vector3(...button.dataset.direction.split(',').map(Number)).normalize();
+ const distance=camera.position.distanceTo(controls.target);
+ const damping=controls.enableDamping;
+ controls.enableDamping=false;
+ controls.update();
+ camera.position.copy(controls.target).addScaledVector(direction,distance);
+ controls.update();
+ controls.enableDamping=damping;
+});
 
 function build(){try{$('build').disabled=true;$('export').disabled=true;status.className='';status.textContent='Preparing SVG geometry…';progress('Generating mesh · Please wait');
  const base=getNumber('base'),depth=getNumber('depth');
