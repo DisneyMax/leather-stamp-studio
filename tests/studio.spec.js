@@ -416,3 +416,53 @@ test('narrow screens can scroll down to the preview without horizontal overflow'
   await page.getByRole('button', { name: '2D design' }).click();
   await expect(page.locator('#designArt')).toHaveAttribute('d', /^M/);
 });
+
+test('numeric artwork placement updates the 2D view, STL, and saved project', async ({ page }) => {
+  const svg = artwork('<path d="M0 0H12V2H4V6H0Z"/>');
+  await load(page, svg, { edge: 'sharp', artSizing: 'custom', artWidth: 12, artHeight: 6, mirror: false });
+  await expect(page.locator('#mode option')).toHaveText(['Debossing (raised stamp)', 'Embossing (recessed die)']);
+  await page.getByRole('button', { name: '2D design' }).click();
+  await page.locator('#artPlacement > summary').click();
+  const design = page.locator('#designArt');
+  await expect(design).toHaveAttribute('d', /^M/);
+  const original = await design.getAttribute('d');
+
+  await page.locator('#artRotation').fill('90');
+  await page.locator('#artX').fill('5');
+  await page.locator('#artY').fill('3');
+  await expect(design).not.toHaveAttribute('d', original);
+  await expect.poll(() => design.evaluate(path => {
+    const { x, y, width, height } = path.getBBox();
+    return [x, y, width, height];
+  })).toEqual([2, -9, 6, 12]);
+  const positioned = await design.getAttribute('d');
+  await generate(page);
+  const triangles = parseSTL(await download(page, '#export'));
+  expectClosedMesh(triangles);
+  expect(surfaceHeight(triangles, 7, 7)).toBe(7.5);
+  expect(surfaceHeight(triangles, 3, -1)).toBe(6);
+
+  await page.getByRole('button', { name: '2D design' }).click();
+  await page.locator('#projectSettings > summary').click();
+  const saved = JSON.parse(await download(page, '#save'));
+  expect(saved.settings).toMatchObject({ artX: '5', artY: '3', artRotation: '90' });
+  await page.getByRole('button', { name: 'Center artwork' }).click();
+  await expect(page.locator('#artX')).toHaveValue('0');
+  await expect(page.locator('#artY')).toHaveValue('0');
+  await expect(page.locator('#artRotation')).toHaveValue('90');
+  await expect(page.locator('#export')).toBeDisabled();
+  await page.getByRole('button', { name: 'Reset position and rotation' }).click();
+  await expect(design).toHaveAttribute('d', original);
+
+  await load(page, saved.svg, saved.settings);
+  await expect(design).toHaveAttribute('d', positioned);
+  await page.locator('#artX').fill('30');
+  await expect(page.locator('#designStatus')).toContainText('Artwork extends beyond the base');
+  await page.locator('#build').click();
+  await expect(page.locator('#status')).toContainText('Artwork extends beyond the base');
+  await expect(page.locator('#export')).toBeDisabled();
+  await load(page, svg, { edge: 'sharp' });
+  await expect(page.locator('#artX')).toHaveValue('0');
+  await expect(page.locator('#artY')).toHaveValue('0');
+  await expect(page.locator('#artRotation')).toHaveValue('0');
+});

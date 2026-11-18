@@ -51,6 +51,8 @@
 #stage.show-design #status{display:none}
 #stage.show-design #viewport{visibility:hidden}
 @media(max-width:850px){#overlay{top:55px}#designView{inset:50px 10px 15px}}
+#artPlacement{margin-top:12px}
+#artPlacement summary{cursor:pointer;font-size:13px;margin-bottom:10px}
 </style>
 <script type="importmap">{"imports":{"three":"https://esm.sh/three@0.180.0","three/addons/":"https://esm.sh/three@0.180.0/examples/jsm/"}}</script>
 <script src="https://cdn.jsdelivr.net/npm/clipper-lib@6.4.2/clipper.js"></script>
@@ -63,7 +65,7 @@
 <button class="secondary quiet-button" id="demo">Use example paw print</button>
 </section>
 <section class="ui-section"><h2>02 / Stamp setup</h2>
-<div class="field"><label for="mode">Impression</label><select id="mode"><option value="raised">Recessed impression in leather (raised stamp)</option><option value="recessed">Raised impression in leather (recessed die)</option></select></div>
+<div class="field"><label for="mode">Impression</label><select id="mode"><option value="raised">Debossing (raised stamp)</option><option value="recessed">Embossing (recessed die)</option></select></div>
 <div class="check"><input id="mirror" type="checkbox" checked><label for="mirror">Mirror artwork for stamping</label></div>
 <div class="field"><label for="edge">Artwork edge</label><select id="edge" aria-describedby="edgeHelp"><option value="sharp">Sharp</option><option value="chamfer" selected>Chamfered · recommended starting point</option><option value="round">Rounded</option></select></div>
 <p class="hint" id="edgeHelp"></p>
@@ -78,6 +80,16 @@
 <div class="pair"><div class="field"><label for="width">Base width (mm)</label><input id="width" type="number" min="10" max="200" step="1" value="40"></div><div class="field"><label for="height">Base height (mm)</label><input id="height" type="number" min="10" max="200" step="1" value="40"></div></div>
 <div class="field"><label for="baseShape">Base shape</label><select id="baseShape"><option value="rect">Rectangle</option><option value="roundrect">Rounded rectangle</option><option value="circle">Circle / ellipse</option><option value="contour">SVG contour (convex silhouette)</option></select></div>
 <p id="sizeSummary" class="hint measure" aria-live="polite">Generate to see artwork dimensions.</p>
+<details id="artPlacement" class="nested-advanced">
+<summary>Artwork position and rotation</summary>
+<div class="pair">
+<div class="field"><label for="artX">Horizontal offset (mm)</label><input id="artX" type="number" min="-200" max="200" step="0.5" value="0"></div>
+<div class="field"><label for="artY">Vertical offset (mm)</label><input id="artY" type="number" min="-200" max="200" step="0.5" value="0"></div>
+</div>
+<div class="field"><label for="artRotation">Clockwise rotation (°)</label><input id="artRotation" type="number" step="1" value="0"></div>
+<p class="hint">Positive offsets move the artwork right and up in the 2D view.</p>
+<div class="buttons"><button type="button" class="secondary" id="centerArt">Center artwork</button><button type="button" class="secondary" id="resetPlacement">Reset position and rotation</button></div>
+</details>
 </section>
 <details class="advanced-group" id="advancedSettings"><summary><span>Advanced settings</span><small>Depth, artwork thickness, and mesh detail</small></summary>
 <div class="advanced-body">
@@ -742,6 +754,16 @@ function designShapes(){
  return cachedShapes;
 }
 
+const defaultPlacement={artX:0,artY:0,artRotation:0};
+function resetArtworkPlacement(resetRotation){
+ $('artX').value=0;
+ $('artY').value=0;
+ if(resetRotation)$('artRotation').value=0;
+ markDirty();
+}
+$('centerArt').onclick=()=>resetArtworkPlacement(false);
+$('resetPlacement').onclick=()=>resetArtworkPlacement(true);
+
 function prepareDesign(){
  const w=getNumber('width'),h=getNumber('height'),margin=getNumber('margin'),curve=getNumber('curve');
  const corner=getNumber('corner'),accuracy=getNumber('tolerance'),kind=$('baseShape').value;
@@ -764,11 +786,25 @@ function prepareDesign(){
  if(!$('designOffset').validity.valid)
    throw Error('Enter a design thickness adjustment from -0.50 to +0.50 mm.');
  const offsetMm=getNumber('designOffset');
- const artP=offsetArtworkPaths(originalArtP,offsetMm);
- // Block geometry that would be silently trimmed by intersection with the base.
- if(offsetMm>0&&paths(region(window.ClipperLib.ClipType.ctDifference,artP,baseP)).length)
-   throw Error('Thickened artwork exceeds the base. Reduce the positive offset, enlarge the base, or adjust the margin.');
+ let artP=offsetArtworkPaths(originalArtP,offsetMm);
+ const x=getNumber('artX'),y=getNumber('artY'),rotation=getNumber('artRotation')%360;
+ if(Math.abs(x)>200||Math.abs(y)>200)throw Error('Artwork offsets must be between -200 and 200 mm.');
+ const placed=x!==0||y!==0||rotation!==0;
+ if(placed){
+   // Mirror and size in artwork space, then rotate about its centered
+   // origin and translate in plate coordinates. SVG view inverts model Y.
+   const radians=-rotation*Math.PI/180,cos=Math.cos(radians),sin=Math.sin(radians);
+   artP=artP.map(loop=>loop.map(p=>({
+     X:Math.round(p.X*cos-p.Y*sin+x*CS),
+     Y:Math.round(p.X*sin+p.Y*cos+y*CS)
+   })));
+ }
  const C=window.ClipperLib;
+ // Block edits that would otherwise silently trim the design at the plate edge.
+ if((placed||offsetMm>0)&&paths(region(C.ClipType.ctDifference,artP,baseP)).length){
+   if(placed)throw Error('Artwork extends beyond the base. Adjust its position or rotation, or enlarge the base.');
+   throw Error('Thickened artwork exceeds the base. Reduce the positive offset, enlarge the base, or adjust the margin.');
+ }
  const baseTree=region(C.ClipType.ctUnion,baseP);
  const artTree=region(C.ClipType.ctUnion,artP);
  const inside=region(C.ClipType.ctIntersection,paths(artTree),paths(baseTree));
@@ -906,7 +942,7 @@ function syncSimpleUI(){
 }
 ['fitArt','customArt','baseShape','edge','mode'].forEach(id=>$(id).addEventListener('change',syncSimpleUI));
 $('resetDefaults').onclick=()=>{
- const defaults={designOffset:0,mode:'raised',mirror:true,width:40,height:40,base:6,depth:1.5,margin:4,curve:64,tolerance:0.035,baseShape:'rect',corner:5,edge:'chamfer',bevel:0.25,simplify:0.02,lockAspect:true};
+ const defaults={...defaultPlacement,designOffset:0,mode:'raised',mirror:true,width:40,height:40,base:6,depth:1.5,margin:4,curve:64,tolerance:0.035,baseShape:'rect',corner:5,edge:'chamfer',bevel:0.25,simplify:0.02,lockAspect:true};
  for(const [id,value] of Object.entries(defaults)){$(id).type==='checkbox'?$(id).checked=value:$(id).value=value;}
  $('fitArt').checked=true;$('customArt').checked=false;syncSizingUI();syncSimpleUI();$('designOffsetSlider').value=$('designOffset').value;
  $('export').disabled=true;status.className='';status.textContent='Recommended settings restored. Click Generate 3D stamp.';
@@ -920,10 +956,10 @@ $('designOffset').addEventListener('input',()=>{
 $('designOffsetSlider').addEventListener('input',()=>{
  $('designOffset').value=Number($('designOffsetSlider').value).toFixed(2);
 });
-const settingIds=['designOffset','mode','mirror','width','height','base','depth','margin','curve','tolerance','baseShape','corner','edge','bevel','simplify','artWidth','artHeight','lockAspect'];
+const settingIds=[...Object.keys(defaultPlacement),'designOffset','mode','mirror','width','height','base','depth','margin','curve','tolerance','baseShape','corner','edge','bevel','simplify','artWidth','artHeight','lockAspect'];
 function download(data,name,type){const url=URL.createObjectURL(new Blob([data],{type}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),2500)}
 $('save').onclick=()=>{const settings={};for(const id of settingIds)settings[id]=$(id).type==='checkbox'?$(id).checked:$(id).value;settings.artSizing=$('customArt').checked?'custom':'fit';download(JSON.stringify({format:'LeatherStampStudio',version:2,svg:svgText,settings},null,2),'leather_stamp_project.json','application/json')};
-$('load').onclick=()=>$('projectFile').click();$('projectFile').onchange=async e=>{try{const f=e.target.files?.[0];if(!f)return;const obj=JSON.parse(await f.text());if(obj.format!=='LeatherStampStudio'||typeof obj.svg!=='string'||!obj.settings)throw Error('Not a Leather Stamp Studio project');validateSvg(obj.svg);svgText=obj.svg;refreshAspectFromSVG();$('customArt').checked=obj.settings.artSizing==='custom';$('fitArt').checked=!$('customArt').checked;syncSizingUI();const settings={designOffset:0,...obj.settings};for(const id of settingIds){if(settings[id]!==undefined){if($(id).type==='checkbox')$(id).checked=!!settings[id];else $(id).value=settings[id]}}$('file').value='';fileLabel('Project artwork');$('export').disabled=true;status.className='';syncSimpleUI();$('designOffsetSlider').value=$('designOffset').value;status.textContent='Project loaded. Click Generate 3D stamp.';progress('Project loaded · Generate to preview');scheduleDesignPreview()}catch(err){status.textContent='Project load failed: '+err.message;status.className='bad';progress('Project load failed','error')}finally{e.target.value=''}};
+$('load').onclick=()=>$('projectFile').click();$('projectFile').onchange=async e=>{try{const f=e.target.files?.[0];if(!f)return;const obj=JSON.parse(await f.text());if(obj.format!=='LeatherStampStudio'||typeof obj.svg!=='string'||!obj.settings)throw Error('Not a Leather Stamp Studio project');validateSvg(obj.svg);svgText=obj.svg;refreshAspectFromSVG();$('customArt').checked=obj.settings.artSizing==='custom';$('fitArt').checked=!$('customArt').checked;syncSizingUI();const settings={...defaultPlacement,designOffset:0,...obj.settings};for(const id of settingIds){if(settings[id]!==undefined){if($(id).type==='checkbox')$(id).checked=!!settings[id];else $(id).value=settings[id]}}$('file').value='';fileLabel('Project artwork');$('export').disabled=true;status.className='';syncSimpleUI();$('designOffsetSlider').value=$('designOffset').value;status.textContent='Project loaded. Click Generate 3D stamp.';progress('Project loaded · Generate to preview');scheduleDesignPreview()}catch(err){status.textContent='Project load failed: '+err.message;status.className='bad';progress('Project load failed','error')}finally{e.target.value=''}};
 $('build').onclick=()=>{showDesignView(false);setTimeout(build,35)};
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter'&&!e.repeat){e.preventDefault();if(!$('build').disabled)$('build').click()}});
 $('resetView').onclick=()=>{if(!finalMesh){controls.target.set(0,0,5);camera.position.set(75,-85,95);controls.update();return}const bounds=new THREE.Box3().setFromObject(finalMesh),center=bounds.getCenter(new THREE.Vector3()),span=bounds.getSize(new THREE.Vector3()),radius=Math.max(span.x,span.y,span.z,15);controls.target.copy(center);camera.position.copy(center).add(new THREE.Vector3(radius*1.5,-radius*1.7,radius*1.6));controls.update()};
