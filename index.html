@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Leather Stamp Studio V3.1 UX preview — SVG to STL</title>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Leather Stamp Studio V3.2 design preview — SVG to STL</title>
 <style>
 :root{font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;color:#e9edf2;background:#10151c}*{box-sizing:border-box}body{margin:0}header{padding:19px 26px;border-bottom:1px solid #303945;display:flex;justify-content:space-between;gap:12px;align-items:center}h1{font-size:21px;margin:0}small,.muted{color:#9eacbc}main{display:grid;grid-template-columns:350px 1fr;min-height:calc(100vh - 72px)}aside{padding:22px;border-right:1px solid #303945;overflow:auto;max-height:calc(100vh - 72px)}section{margin-bottom:22px}h2{font-size:13px;letter-spacing:.09em;text-transform:uppercase;color:#b6c2d0;margin:0 0 12px}label{font-size:13px;display:block;margin-bottom:6px}.field{margin:0 0 13px}.pair{display:grid;grid-template-columns:1fr 1fr;gap:10px}input[type=number],select,input[type=file]{width:100%;padding:10px;background:#1b2430;border:1px solid #394655;border-radius:8px;color:#f2f4f7;font-size:14px}input[type=file]{font-size:12px}input[type=checkbox]{accent-color:#d4a66d}button{background:#d9a76b;color:#1c1711;border:0;padding:12px 15px;border-radius:8px;font-weight:700;cursor:pointer}button.secondary{background:#273342;color:#e8edf3}button:disabled{opacity:.45;cursor:not-allowed}.field:has(input:disabled){opacity:.5}.segmented{display:grid;grid-template-columns:1fr 1fr;gap:7px}.segmented label{margin:0;display:flex;align-items:center;gap:6px;padding:10px;border:1px solid #394655;border-radius:8px;cursor:pointer;background:#1b2430}.segmented input{accent-color:#d4a66d}.settings-note{background:#192636;border-left:3px solid #d4a66d;padding:10px 12px;border-radius:4px;margin:8px 0 12px}.measure{font-variant-numeric:tabular-nums;color:#e3c69c;font-weight:600}.section-divider{border:0;border-top:1px solid #303945;margin:16px 0}.readonly{color:#9eacbc}.buttons{display:flex;gap:9px;flex-wrap:wrap}.check{display:flex;gap:8px;align-items:center;margin:10px 0}.check label{margin:0}.hint{font-size:12px;color:#9eacbc;line-height:1.55}#stage{position:relative;min-height:550px}#viewport{position:absolute;inset:0}#overlay{position:absolute;left:18px;top:17px;pointer-events:none;background:#151c25d9;border:1px solid #334051;padding:11px 14px;border-radius:9px;font-size:12px;line-height:1.7}#status{position:absolute;bottom:18px;left:18px;right:18px;max-width:750px;background:#1d2936e8;border:1px solid #3a4958;border-radius:9px;padding:12px 15px;font-size:13px;white-space:pre-wrap;line-height:1.5}.good{color:#9cdbb0}.bad{color:#ffb0a4}.footer{padding:12px 22px;border-top:1px solid #303945;color:#9eacbc;font-size:12px}@media(max-width:850px){main{display:block}aside{max-height:none;border-right:0;border-bottom:1px solid #303945}#stage{height:65vh;min-height:430px}}
 
@@ -41,11 +41,20 @@
 #cornerField[hidden],#bevelField[hidden]{display:none}
 #sizeSummary{margin:8px 0 0}
 @media(max-width:850px){.advanced-group>summary small{max-width:120px}}
+#designView{position:absolute;inset:55px 18px 18px;display:grid;grid-template-rows:minmax(0,1fr) auto;gap:8px}
+#designView[hidden]{display:none}
+#designCanvas{width:100%;height:100%;min-height:0}
+#designPlate{fill:#293744;stroke:#8396a8;stroke-width:1.5px;vector-effect:non-scaling-stroke}
+#designArt{fill:#d9a76b}
+#designStatus{margin:0 auto;text-align:center;background:#151c25;padding:5px 10px;border-radius:6px}
+#stage.show-design #status{display:none}
+#stage.show-design #viewport{visibility:hidden}
+@media(max-width:850px){#overlay{top:55px}#designView{inset:50px 10px 15px}}
 </style>
 <script type="importmap">{"imports":{"three":"https://esm.sh/three@0.180.0","three/addons/":"https://esm.sh/three@0.180.0/examples/jsm/"}}</script>
 <script src="https://cdn.jsdelivr.net/npm/clipper-lib@6.4.2/clipper.js"></script>
 <script src="./polygon-geometry.js"></script>
-</head><body><header><div><h1>Leather Stamp Studio <small> / V3.1 UX preview</small></h1><small>SVG → printable STL · designed for leather embossing dies</small></div><small>Browser-based · mm</small></header><main><aside>
+</head><body><header><div><h1>Leather Stamp Studio <small> / V3.2 design preview</small></h1><small>SVG → printable STL · designed for leather embossing dies</small></div><small>Browser-based · mm</small></header><main><aside>
 <div class="workflow" aria-label="Generate and export controls"><div class="step-hint">CREATE → CHECK → EXPORT</div><div class="buttons"><button id="build" title="Ctrl/⌘ + Enter">Generate 3D stamp</button><button class="secondary" id="export" disabled title="Generate and pass mesh checks before exporting">Download STL</button></div><small id="readyState" role="status" aria-live="polite">Sample artwork ready · Generate to preview</small></div>
 
 <section class="ui-section"><h2>01 / Your artwork</h2>
@@ -66,14 +75,9 @@
 </div>
 <div class="pair"><div class="field"><label for="width">Base width (mm)</label><input id="width" type="number" min="10" max="200" step="1" value="40"></div><div class="field"><label for="height">Base height (mm)</label><input id="height" type="number" min="10" max="200" step="1" value="40"></div></div>
 <div class="field"><label for="baseShape">Base shape</label><select id="baseShape"><option value="rect">Rectangle</option><option value="roundrect">Rounded rectangle</option><option value="circle">Circle / ellipse</option><option value="contour">SVG contour (convex silhouette)</option></select></div>
-<div class="field" id="designOffsetField">
-<label for="designOffset">Design thickness adjustment (mm)</label>
-<div class="offset-control"><input id="designOffset" type="number" min="-0.5" max="0.5" step="any" value="0.00" required aria-describedby="offsetHelp"><input id="designOffsetSlider" type="range" min="-0.5" max="0.5" step="0.05" value="0" aria-label="Design thickness adjustment"></div>
-<p id="offsetHelp" class="hint">+ thickens details · − thins them · 0 keeps your SVG unchanged. The slider moves in 0.05 mm steps. Type a value for finer control. A strong adjustment can close small holes or remove thin details.</p>
-</div>
 <p id="sizeSummary" class="hint measure" aria-live="polite">Generate to see artwork dimensions.</p>
 </section>
-<details class="advanced-group" id="advancedSettings"><summary><span>Advanced settings</span><small>Depth, margins, bevel, and geometry quality</small></summary>
+<details class="advanced-group" id="advancedSettings"><summary><span>Advanced settings</span><small>Depth, artwork thickness, and mesh detail</small></summary>
 <div class="advanced-body">
 <p class="hint">The defaults are our tested starting values. Adjust only if you need a different impression depth, clearance or edge detail.</p>
 <div class="pair">
@@ -83,6 +87,11 @@
 <div class="field" id="bevelField"><label for="bevel">Edge size (mm)</label><input id="bevel" type="number" min="0" max="2" step="0.05" value="0.25"></div>
 </div>
 <div class="field" id="cornerField"><label for="corner">Base corner radius (mm)</label><input id="corner" type="number" min="0" max="40" step="0.5" value="5"></div>
+<div class="field" id="designOffsetField">
+<label for="designOffset">Design thickness adjustment (mm)</label>
+<div class="offset-control"><input id="designOffset" type="number" min="-0.5" max="0.5" step="any" value="0.00" required aria-describedby="offsetHelp"><input id="designOffsetSlider" type="range" min="-0.5" max="0.5" step="0.05" value="0" aria-label="Design thickness adjustment"></div>
+<p id="offsetHelp" class="hint">+ thickens details · − thins them · 0 keeps your SVG unchanged. The slider moves in 0.05 mm steps. Type a value for finer control. A strong adjustment can close small holes or remove thin details.</p>
+</div>
 <details class="nested-advanced"><summary>Mesh detail controls</summary>
 <div class="pair"><div class="field"><label for="curve">Curve detail</label><input id="curve" type="number" min="3" max="128" step="1" value="64"></div>
 <div class="field"><label for="tolerance">Curve accuracy (mm)</label><input id="tolerance" type="number" min="0.005" max="0.3" step="0.005" value="0.035"></div></div>
@@ -96,7 +105,14 @@
 <p class="hint">Projects include SVG artwork and all size and quality settings, stored locally in your downloaded JSON file.</p>
 <h2>Final checks</h2><p class="hint">V3.1 validates boundary edges, non-manifold edges, inconsistent face orientation and degenerate triangles before enabling STL export. Mesh checks cannot guarantee slicer compatibility or print strength. Import STL into Bambu Studio as millimeters. Recessed dies may require a matching positive die to produce a raised leather impression.</p>
 </div></details>
-</aside><div id="stage"><div id="viewport"></div><div id="stageTools"><button id="resetView" title="Recenter and fit your stamp in the 3D view">⤢ Fit view</button></div><div id="overlay"><b>3D preview</b><br>Drag to rotate · Scroll to zoom<br>Right-drag to pan</div><div id="status" aria-live="polite">Loading 3D libraries… Internet access is required when opening this HTML file.</div></div></main><div class="footer">V3.1 UX preview · Tested V3.0 mesh engine · Test stamps on a leather offcut before production use.</div>
+</aside><div id="stage"><div id="viewport"></div><div id="designView" hidden>
+<svg id="designCanvas" role="img" aria-label="Top view of the stamp artwork and base">
+<path id="designPlate" fill-rule="evenodd"></path>
+<path id="designArt" fill-rule="evenodd"></path>
+</svg>
+<p id="designStatus" class="hint" role="status"></p>
+</div>
+<div id="stageTools"><button id="toggleDesign" aria-controls="designView" type="button">2D design</button><button id="resetView" title="Recenter and fit your stamp in the 3D view">⤢ Fit view</button></div><div id="overlay"><b>3D preview</b><br>Drag to rotate · Scroll to zoom<br>Right-drag to pan</div><div id="status" aria-live="polite">Loading 3D libraries… Internet access is required when opening this HTML file.</div></div></main><div class="footer">V3.2 design preview · Tested V3.0 mesh engine · Test stamps on a leather offcut before production use.</div>
 <script type="module">
 import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
@@ -118,7 +134,7 @@ scene.add(new THREE.HemisphereLight(0xffffff,0x546173,2.2));const light=new THRE
 const grid=new THREE.GridHelper(250,25,0x415268,0x2a3746);grid.rotation.x=Math.PI/2;grid.position.z=-.12;scene.add(grid);
 modelGroup=new THREE.Group();scene.add(modelGroup);
 function resize(){const box=$('viewport').getBoundingClientRect();camera.aspect=box.width/Math.max(1,box.height);camera.updateProjectionMatrix();renderer.setSize(box.width,box.height,false)}window.addEventListener('resize',resize);resize();
-function animate(){requestAnimationFrame(animate);controls.update();renderer.render(scene,camera)}animate();
+function animate(){requestAnimationFrame(animate);if(!$("designView").hidden)return;controls.update();renderer.render(scene,camera)}animate();
 status.textContent='Ready. Sample artwork loaded; click Generate 3D stamp.';progress('Sample artwork ready · Generate to preview');
 }catch(e){status.textContent='Unable to initialize 3D preview: '+e.message;status.className='bad';throw e}
 async function acceptSVG(file){
@@ -129,10 +145,11 @@ async function acceptSVG(file){
   svgText=txt;fileLabel(file.name);status.textContent=`Loaded ${file.name}. Click Generate 3D stamp.`;
   status.className='';$('export').disabled=true;progress('Artwork loaded · Generate to preview');
   refreshAspectFromSVG();if($('customArt').checked)setCustomFromFit();
+  scheduleDesignPreview();
  }catch(e){showLoadError(e)}
 }
 $('file').addEventListener('change',e=>acceptSVG(e.target.files?.[0]));
-$('demo').onclick=()=>{svgText=sample;$('file').value='';fileLabel(null);status.textContent='Paw print loaded. Click Generate 3D stamp.';status.className='';$('export').disabled=true;progress('Sample artwork ready · Generate to preview');refreshAspectFromSVG();if($('customArt').checked)setCustomFromFit()};
+$('demo').onclick=()=>{svgText=sample;$('file').value='';fileLabel(null);status.textContent='Paw print loaded. Click Generate 3D stamp.';status.className='';$('export').disabled=true;progress('Sample artwork ready · Generate to preview');refreshAspectFromSVG();if($('customArt').checked)setCustomFromFit();scheduleDesignPreview()};
 const dz=$('dropzone');dz.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();$('file').click()}});
 for(const eventName of ['dragenter','dragover'])dz.addEventListener(eventName,e=>{e.preventDefault();dz.classList.add('dragging')});
 for(const eventName of ['dragleave','drop'])dz.addEventListener(eventName,e=>{e.preventDefault();dz.classList.remove('dragging')});
@@ -222,7 +239,7 @@ function updateArtworkSummary(raw){$('sizeSummary').textContent=`Artwork ${raw.a
 function setCustomFromFit(){try{const shapes=normalizeShapes(svgText),r=getArtwork(shapes,getNumber('width'),getNumber('height'),getNumber('margin'),false,{mode:'fit'},$('baseShape').value);currentAspect=r.ratio;$('artWidth').value=(Math.floor(r.artW*1000)/1000).toFixed(3);$('artHeight').value=(Math.floor(r.artH*1000)/1000).toFixed(3);$('sizeSummary').textContent=`Artwork ${r.artW.toFixed(2)} × ${r.artH.toFixed(2)} mm`;}catch(e){$('sizeSummary').textContent=e.message}}
 for(const id of ['fitArt','customArt'])$(id).addEventListener('change',()=>{if($('customArt').checked){setCustomFromFit();}syncSizingUI();markDirty();});
 for(const [changed,other] of [['artWidth','artHeight'],['artHeight','artWidth']])$(changed).addEventListener('input',()=>{if($('lockAspect').checked&&currentAspect>0){const v=Number($(changed).value);if(Number.isFinite(v)&&v>0)$(other).value=Number(changed==='artWidth'?v/currentAspect:v*currentAspect).toFixed(3);}});
-function markDirty(){if(finalMesh){$('export').disabled=true;status.className='';status.textContent='Settings changed. Generate 3D stamp again before exporting.';progress('Changes pending · Regenerate before export');}}
+function markDirty(){scheduleDesignPreview();if(finalMesh){$('export').disabled=true;status.className='';status.textContent='Settings changed. Generate 3D stamp again before exporting.';progress('Changes pending · Regenerate before export');}}
 for(const el of document.querySelectorAll('aside input, aside select')){
  if(el.type!=='file')el.addEventListener(['number','range'].includes(el.type)?'input':'change',markDirty);
 }
@@ -532,14 +549,9 @@ function meshFaultDetails(geom,limit=8){
  const fmt=v=>v.map(x=>x.toFixed(4)).join(',');
  return bad.slice(0,limit).map(e=>`${e.faces.length} face(s): (${fmt(coords[e.a])}) - (${fmt(coords[e.b])})`).concat(degens.slice(0,limit).map(i=>`degenerate face ${i}`)).join('\n');
 }
-function buildMesh(basePaths,artPaths,base,depth,raised,edge,bevel){
+function buildMesh({baseTree,inside,artwork},base,depth,raised,edge,bevel){
  const C=window.ClipperLib;
- const baseTree=region(C.ClipType.ctUnion,basePaths),artTree=region(C.ClipType.ctUnion,artPaths);
- const bp=paths(baseTree),ap=paths(artTree);
- const inside=region(C.ClipType.ctIntersection,ap,bp);
- const artwork=paths(inside);
- if(!artwork.length)throw Error('Artwork does not intersect the stamp base');
- const outside=region(C.ClipType.ctDifference,bp,artwork);
+ const outside=region(C.ClipType.ctDifference,paths(baseTree),artwork);
  const coords=[],faces=[];
  const vert=(x,y,z)=>{coords.push(x/CS,y/CS,z);return coords.length/3-1};
  const tri=(a,b,c)=>{if(a!==b&&b!==c&&c!==a)faces.push(a,b,c)};
@@ -671,23 +683,26 @@ function buildMesh(basePaths,artPaths,base,depth,raised,edge,bevel){
  }
  let g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(coords,3));g.setIndex(faces);g=g.toNonIndexed();g.computeVertexNormals();return g;
 }
-function build(){try{$('build').disabled=true;$('export').disabled=true;status.className='';status.textContent='Preparing SVG geometry…';progress('Generating mesh · Please wait');
- const w=getNumber('width'),h=getNumber('height'),base=getNumber('base'),depth=getNumber('depth'),margin=getNumber('margin'),curve=getNumber('curve'),corner=getNumber('corner'),accuracy=getNumber('tolerance');
+let cachedSVG, cachedShapes, designFrame;
+function designShapes(){
+ if(cachedSVG!==svgText){
+   cachedShapes=normalizeShapes(svgText);
+   cachedSVG=svgText;
+ }
+ return cachedShapes;
+}
+
+function prepareDesign(){
+ const w=getNumber('width'),h=getNumber('height'),margin=getNumber('margin'),curve=getNumber('curve');
+ const corner=getNumber('corner'),accuracy=getNumber('tolerance'),kind=$('baseShape').value;
  if(w<10||w>200||h<10||h>200)throw Error('Base width and height must be between 10 and 200 mm.');
- if(base<2||base>25)throw Error('Base thickness must be between 2 and 25 mm.');
- if(depth<=0||depth>5)throw Error('Relief/cavity depth must be greater than 0 and at most 5 mm.');
- if($('mode').value==='recessed'&&depth>=base)throw Error('Recessed cavity depth must be less than base thickness.');
  if(margin<.5||margin>=Math.min(w,h)/2)throw Error('Artwork margin is too large for the selected base.');
  if(curve<3||curve>128)throw Error('Curve detail must be between 3 and 128.');
  if(accuracy<.005||accuracy>.3)throw Error('Curve accuracy must be between 0.005 and 0.3 mm.');
  if(corner<0)throw Error('Corner radius cannot be negative.');
- const raised=$('mode').value==='raised',kind=$('baseShape').value;
- const edge=raised?$('edge').value:'sharp';
- const bevel=edge==='sharp'?0:getNumber('bevel');
- if(edge!=='sharp'&&bevel<0.00001)throw Error('Enter a positive edge size or select Sharp.');
- const shapes=normalizeShapes(svgText);
+ const shapes=designShapes();
  const sizing=$('customArt').checked?{mode:'custom',width:getNumber('artWidth'),height:getNumber('artHeight')}:{mode:'fit'};
- const raw=getArtwork(shapes,w,h,margin,$('mirror').checked,sizing,kind);currentAspect=raw.ratio;updateArtworkSummary(raw);
+ const raw=getArtwork(shapes,w,h,margin,$('mirror').checked,sizing,kind);
  const requestedSimplify=getNumber('simplify');if(requestedSimplify<0||requestedSimplify>.5)throw Error('SVG simplification must be between 0 and 0.5 mm.');
  const effectiveTolerance=Math.max(accuracy,requestedSimplify),optimized=optimizeShapes(raw.transformed,curve,effectiveTolerance);
  // The source artwork bounds fit in the base's rectangular safe area. For an
@@ -703,11 +718,76 @@ function build(){try{$('build').disabled=true;$('export').disabled=true;status.c
  // Block geometry that would be silently trimmed by intersection with the base.
  if(offsetMm>0&&paths(region(window.ClipperLib.ClipType.ctDifference,artP,baseP)).length)
    throw Error('Thickened artwork exceeds the base. Reduce the positive offset, enlarge the base, or adjust the margin.');
+ const C=window.ClipperLib;
+ const baseTree=region(C.ClipType.ctUnion,baseP);
+ const artTree=region(C.ClipType.ctUnion,artP);
+ const inside=region(C.ClipType.ctIntersection,paths(artTree),paths(baseTree));
+ const artwork=paths(inside);
+ if(!artwork.length)throw Error('Artwork does not intersect the stamp base');
+ return {baseTree,inside,artwork,w,h,kind,shapes,raw,optimized,effectiveTolerance,offsetMm};
+}
+
+function svgPath(loops){
+ return loops.map(loop=>loop.map(({X,Y},index)=>`${index?'L':'M'}${X/CS} ${-Y/CS}`).join('')+'Z').join('');
+}
+
+function renderDesignPreview(){
+ try{
+   const {baseTree,artwork}=prepareDesign();
+   const plate=paths(baseTree);
+   let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+   for(const loop of plate)for(const {X,Y} of loop){
+     minX=Math.min(minX,X/CS); maxX=Math.max(maxX,X/CS);
+     minY=Math.min(minY,-Y/CS); maxY=Math.max(maxY,-Y/CS);
+   }
+   const padding=.08*Math.max(maxX-minX,maxY-minY);
+   $('designCanvas').setAttribute('viewBox',`${minX-padding} ${minY-padding} ${maxX-minX+2*padding} ${maxY-minY+2*padding}`);
+   $('designPlate').setAttribute('d',svgPath(plate));
+   $('designArt').setAttribute('d',svgPath(artwork));
+   const type=$('mode').value==='raised'?'Raised artwork':'Recessed artwork';
+   $('designStatus').textContent=`${type} in gold · Base in blue-gray`;
+ }catch(error){
+   $('designPlate').removeAttribute('d');
+   $('designArt').removeAttribute('d');
+   $('designStatus').textContent=error.message;
+ }
+}
+
+function scheduleDesignPreview(){
+ if($('designView').hidden||designFrame!==undefined)return;
+ designFrame=requestAnimationFrame(()=>{
+   designFrame=undefined;
+   if(!$('designView').hidden)renderDesignPreview();
+ });
+}
+
+function showDesignView(showDesign){
+ $('stage').classList.toggle('show-design',showDesign);
+ $('designView').hidden=!showDesign;
+ $('overlay').hidden=showDesign;
+ $('resetView').hidden=showDesign;
+ $('toggleDesign').textContent=showDesign?'3D preview':'2D design';
+ scheduleDesignPreview();
+}
+$('toggleDesign').onclick=()=>showDesignView($('designView').hidden);
+
+function build(){try{$('build').disabled=true;$('export').disabled=true;status.className='';status.textContent='Preparing SVG geometry…';progress('Generating mesh · Please wait');
+ const base=getNumber('base'),depth=getNumber('depth');
+ if(base<2||base>25)throw Error('Base thickness must be between 2 and 25 mm.');
+ if(depth<=0||depth>5)throw Error('Relief/cavity depth must be greater than 0 and at most 5 mm.');
+ const raised=$('mode').value==='raised';
+ if(!raised&&depth>=base)throw Error('Recessed cavity depth must be less than base thickness.');
+ const edge=raised?$('edge').value:'sharp';
+ const bevel=edge==='sharp'?0:getNumber('bevel');
+ if(edge!=='sharp'&&bevel<0.00001)throw Error('Enter a positive edge size or select Sharp.');
+ const design=prepareDesign();
+ const {raw,w,h,kind,shapes,optimized,effectiveTolerance,offsetMm}=design;
+ currentAspect=raw.ratio;updateArtworkSummary(raw);
  // Fail closed, with explicit width reduction instead of a silent
  // invalid STL or a disguised sharp fallback. A valid candidate is accepted
  // only when its mesh actually has more triangles than the sharp baseline.
  let geometry=null,report=null,appliedBevel=bevel,attemptLog=[],faultDetails=[];
- const sharpReference=(raised&&edge!=='sharp'&&bevel>0)?buildMesh(baseP,artP,base,depth,raised,'sharp',0):null;
+ const sharpReference=(raised&&edge!=='sharp'&&bevel>0)?buildMesh(design,base,depth,raised,'sharp',0):null;
  const sharpTriangles=sharpReference?geometryReport(sharpReference).triangles:0;
  if(sharpReference)sharpReference.dispose();
  const widths=(raised&&edge!=='sharp'&&bevel>0)
@@ -716,7 +796,7 @@ function build(){try{$('build').disabled=true;$('export').disabled=true;status.c
  for(const width of widths){
    let candidate=null;
    try{
-     candidate=buildMesh(baseP,artP,base,depth,raised,edge,width);
+     candidate=buildMesh(design,base,depth,raised,edge,width);
      let check=geometryReport(candidate);
      let stitchCount=0,weldCount=0,sliverCount=0,removedCount=0;
      if(edge!=='sharp'&&check.boundary>0){
@@ -773,6 +853,7 @@ $('resetDefaults').onclick=()=>{
  $('fitArt').checked=true;$('customArt').checked=false;syncSizingUI();syncSimpleUI();$('designOffsetSlider').value=$('designOffset').value;
  $('export').disabled=true;status.className='';status.textContent='Recommended settings restored. Click Generate 3D stamp.';
  progress('Settings restored · Generate to preview');
+ scheduleDesignPreview();
 };
 syncSimpleUI();
 $('designOffset').addEventListener('input',()=>{
@@ -784,9 +865,9 @@ $('designOffsetSlider').addEventListener('input',()=>{
 const settingIds=['designOffset','mode','mirror','width','height','base','depth','margin','curve','tolerance','baseShape','corner','edge','bevel','simplify','artWidth','artHeight','lockAspect'];
 function download(data,name,type){const url=URL.createObjectURL(new Blob([data],{type}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),2500)}
 $('save').onclick=()=>{const settings={};for(const id of settingIds)settings[id]=$(id).type==='checkbox'?$(id).checked:$(id).value;settings.artSizing=$('customArt').checked?'custom':'fit';download(JSON.stringify({format:'LeatherStampStudio',version:2,svg:svgText,settings},null,2),'leather_stamp_project.json','application/json')};
-$('load').onclick=()=>$('projectFile').click();$('projectFile').onchange=async e=>{try{const f=e.target.files?.[0];if(!f)return;const obj=JSON.parse(await f.text());if(obj.format!=='LeatherStampStudio'||typeof obj.svg!=='string'||!obj.settings)throw Error('Not a Leather Stamp Studio project');validateSvg(obj.svg);svgText=obj.svg;refreshAspectFromSVG();$('customArt').checked=obj.settings.artSizing==='custom';$('fitArt').checked=!$('customArt').checked;syncSizingUI();const settings={designOffset:0,...obj.settings};for(const id of settingIds){if(settings[id]!==undefined){if($(id).type==='checkbox')$(id).checked=!!settings[id];else $(id).value=settings[id]}}$('file').value='';fileLabel('Project artwork');$('export').disabled=true;status.className='';syncSimpleUI();$('designOffsetSlider').value=$('designOffset').value;status.textContent='Project loaded. Click Generate 3D stamp.';progress('Project loaded · Generate to preview')}catch(err){status.textContent='Project load failed: '+err.message;status.className='bad';progress('Project load failed','error')}finally{e.target.value=''}};
-$('build').onclick=()=>{setTimeout(build,35)};
+$('load').onclick=()=>$('projectFile').click();$('projectFile').onchange=async e=>{try{const f=e.target.files?.[0];if(!f)return;const obj=JSON.parse(await f.text());if(obj.format!=='LeatherStampStudio'||typeof obj.svg!=='string'||!obj.settings)throw Error('Not a Leather Stamp Studio project');validateSvg(obj.svg);svgText=obj.svg;refreshAspectFromSVG();$('customArt').checked=obj.settings.artSizing==='custom';$('fitArt').checked=!$('customArt').checked;syncSizingUI();const settings={designOffset:0,...obj.settings};for(const id of settingIds){if(settings[id]!==undefined){if($(id).type==='checkbox')$(id).checked=!!settings[id];else $(id).value=settings[id]}}$('file').value='';fileLabel('Project artwork');$('export').disabled=true;status.className='';syncSimpleUI();$('designOffsetSlider').value=$('designOffset').value;status.textContent='Project loaded. Click Generate 3D stamp.';progress('Project loaded · Generate to preview');scheduleDesignPreview()}catch(err){status.textContent='Project load failed: '+err.message;status.className='bad';progress('Project load failed','error')}finally{e.target.value=''}};
+$('build').onclick=()=>{showDesignView(false);setTimeout(build,35)};
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter'&&!e.repeat){e.preventDefault();if(!$('build').disabled)$('build').click()}});
 $('resetView').onclick=()=>{if(!finalMesh){controls.target.set(0,0,5);camera.position.set(75,-85,95);controls.update();return}const bounds=new THREE.Box3().setFromObject(finalMesh),center=bounds.getCenter(new THREE.Vector3()),span=bounds.getSize(new THREE.Vector3()),radius=Math.max(span.x,span.y,span.z,15);controls.target.copy(center);camera.position.copy(center).add(new THREE.Vector3(radius*1.5,-radius*1.7,radius*1.6));controls.update()};
-$('export').onclick=()=>{if(!finalMesh||$('export').disabled)return;try{const exporter=new STLExporter();const output=exporter.parse(finalMesh,{binary:true});download(output,`leather_stamp_v3_1_${$('mode').value}_${$('baseShape').value}.stl`,'model/stl')}catch(e){status.textContent='STL export failed: '+e.message;status.className='bad'}};
+$('export').onclick=()=>{if(!finalMesh||$('export').disabled)return;try{const exporter=new STLExporter();const output=exporter.parse(finalMesh,{binary:true});download(output,`leather_stamp_v3_2_${$('mode').value}_${$('baseShape').value}.stl`,'model/stl')}catch(e){status.textContent='STL export failed: '+e.message;status.className='bad'}};
 </script></body></html>
