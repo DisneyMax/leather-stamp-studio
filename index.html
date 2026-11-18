@@ -65,14 +65,9 @@
 </div>
 <div class="pair"><div class="field"><label for="width">Base width (mm)</label><input id="width" type="number" min="10" max="200" step="1" value="40"></div><div class="field"><label for="height">Base height (mm)</label><input id="height" type="number" min="10" max="200" step="1" value="40"></div></div>
 <div class="field"><label for="baseShape">Base shape</label><select id="baseShape"><option value="rect">Rectangle</option><option value="roundrect">Rounded rectangle</option><option value="circle">Circle / ellipse</option><option value="contour">SVG contour (convex silhouette)</option></select></div>
-<div class="field" id="designOffsetField">
-<label for="designOffset">Design thickness adjustment (mm)</label>
-<div class="offset-control"><input id="designOffset" type="number" min="-0.5" max="0.5" step="any" value="0.00" required aria-describedby="offsetHelp"><input id="designOffsetSlider" type="range" min="-0.5" max="0.5" step="0.05" value="0" aria-label="Design thickness adjustment"></div>
-<p id="offsetHelp" class="hint">+ thickens details · − thins them · 0 keeps your SVG unchanged. The slider moves in 0.05 mm steps. Type a value for finer control. A strong adjustment can close small holes or remove thin details.</p>
-</div>
 <p id="sizeSummary" class="hint measure" aria-live="polite">Generate to see artwork dimensions.</p>
 </section>
-<details class="advanced-group" id="advancedSettings"><summary><span>Advanced settings</span><small>Depth, margins, bevel, and geometry quality</small></summary>
+<details class="advanced-group" id="advancedSettings"><summary><span>Advanced settings</span><small>Depth, artwork thickness, and mesh detail</small></summary>
 <div class="advanced-body">
 <p class="hint">The defaults are our tested starting values. Adjust only if you need a different impression depth, clearance or edge detail.</p>
 <div class="pair">
@@ -82,6 +77,11 @@
 <div class="field" id="bevelField"><label for="bevel">Edge size (mm)</label><input id="bevel" type="number" min="0" max="2" step="0.05" value="0.25"></div>
 </div>
 <div class="field" id="cornerField"><label for="corner">Base corner radius (mm)</label><input id="corner" type="number" min="0" max="40" step="0.5" value="5"></div>
+<div class="field" id="designOffsetField">
+<label for="designOffset">Design thickness adjustment (mm)</label>
+<div class="offset-control"><input id="designOffset" type="number" min="-0.5" max="0.5" step="any" value="0.00" required aria-describedby="offsetHelp"><input id="designOffsetSlider" type="range" min="-0.5" max="0.5" step="0.05" value="0" aria-label="Design thickness adjustment"></div>
+<p id="offsetHelp" class="hint">+ thickens details · − thins them · 0 keeps your SVG unchanged. The slider moves in 0.05 mm steps. Type a value for finer control. A strong adjustment can close small holes or remove thin details.</p>
+</div>
 <details class="nested-advanced"><summary>Mesh detail controls</summary>
 <div class="pair"><div class="field"><label for="curve">Curve detail</label><input id="curve" type="number" min="3" max="128" step="1" value="64"></div>
 <div class="field"><label for="tolerance">Curve accuracy (mm)</label><input id="tolerance" type="number" min="0.005" max="0.3" step="0.005" value="0.035"></div></div>

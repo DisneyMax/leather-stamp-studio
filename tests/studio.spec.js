@@ -107,6 +107,7 @@ for (const mode of ['raised', 'recessed']) {
 test('advanced controls follow the selected mode, base shape and sizing', async ({ page }) => {
   const advanced = page.locator('#advancedSettings');
   await expect(advanced).toHaveJSProperty('open', false);
+  await expect(page.locator('#designOffset')).toBeHidden();
   await expect(page.locator('#exactSizeFields')).toBeHidden();
   await page.locator('#customArt').check();
   await expect(page.locator('#artWidth')).toBeEnabled();
@@ -114,6 +115,8 @@ test('advanced controls follow the selected mode, base shape and sizing', async 
   await page.locator('#fitArt').check();
   await expect(page.locator('#exactSizeFields')).toBeHidden();
   await advanced.locator('summary').first().click();
+  await expect(advanced.locator('#designOffset')).toBeVisible();
+  await expect(advanced.locator('#designOffsetSlider')).toBeVisible();
   await expect(page.locator('#cornerField')).toBeHidden();
   await page.locator('#baseShape').selectOption('roundrect');
   await expect(page.locator('#cornerField')).toBeVisible();
@@ -147,6 +150,7 @@ test('V3.1 project round-trip and V3.0 project missing the adjustment', async ({
     format: 'LeatherStampStudio', version: 2, svg: compound,
     settings: { designOffset: '-0.37', edge: 'sharp', artSizing: 'custom', artWidth: '25', artHeight: '24' },
   });
+  await page.locator('#advancedSettings > summary').click();
   await page.locator('#designOffset').fill('0.5');
   await load(page, saved.svg, saved.settings);
   await expect(page.locator('#designOffset')).toHaveValue('-0.37');
@@ -161,6 +165,7 @@ test('V3.1 project round-trip and V3.0 project missing the adjustment', async ({
 test('input edits and failed builds block a previously valid STL', async ({ page }) => {
   await load(page, artwork('<path d="M0 0H32V0.6H0Z"/>'), { edge: 'sharp' });
   await generate(page);
+  await page.locator('#advancedSettings > summary').click();
   await page.locator('#designOffset').fill('-0.6');
   await expect(page.locator('#export')).toBeDisabled();
   await page.locator('#build').click();
@@ -183,6 +188,7 @@ test('offsets can close a small hole or remove a narrow island', async ({ page }
   const thick = parseSTL(await download(page, '#export'));
   expect(surfaceHeight(thick, 0.2, 0.2)).toBe(7.5);
   expectClosedMesh(thick);
+  await page.locator('#advancedSettings > summary').click();
   await page.locator('#designOffset').fill('-0.5');
   await generate(page);
   const thin = parseSTL(await download(page, '#export'));
@@ -226,6 +232,7 @@ test('a positive offset that exceeds a rounded base blocks export', async ({ pag
   const square = artwork('<path d="M0 0H32V32H0Z"/>');
   await load(page, square, { edge: 'sharp', baseShape: 'roundrect', width: 10, height: 10, corner: 5, margin: 1.5 });
   await generate(page);
+  await page.locator('#advancedSettings > summary').click();
   await page.locator('#designOffset').fill('0.5');
   await page.locator('#build').click();
   await expect(page.locator('#status')).toContainText('Thickened artwork exceeds the base');
@@ -241,6 +248,7 @@ test('nonzero fill rules and mirroring preserve off-center islands and counters'
   expect(surfaceHeight(thick, -6, -2)).toBe(7.5);
   expect(surfaceHeight(thick, 5, -2)).toBe(6);
   expectClosedMesh(thick);
+  await page.locator('#advancedSettings > summary').click();
   await page.locator('#designOffset').fill('-0.5');
   await generate(page);
   const thin = parseSTL(await download(page, '#export'));
