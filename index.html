@@ -3,7 +3,7 @@
 <style>
 :root{font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;color:#e9edf2;background:#10151c}*{box-sizing:border-box}body{margin:0}header{padding:19px 26px;border-bottom:1px solid #303945;display:flex;justify-content:space-between;gap:12px;align-items:center}h1{font-size:21px;margin:0}small,.muted{color:#9eacbc}main{display:grid;grid-template-columns:350px 1fr;min-height:calc(100vh - 72px)}aside{padding:22px;border-right:1px solid #303945;overflow:auto;max-height:calc(100vh - 72px)}section{margin-bottom:22px}h2{font-size:13px;letter-spacing:.09em;text-transform:uppercase;color:#b6c2d0;margin:0 0 12px}label{font-size:13px;display:block;margin-bottom:6px}.field{margin:0 0 13px}.pair{display:grid;grid-template-columns:1fr 1fr;gap:10px}input[type=number],select,input[type=file]{width:100%;padding:10px;background:#1b2430;border:1px solid #394655;border-radius:8px;color:#f2f4f7;font-size:14px}input[type=file]{font-size:12px}input[type=checkbox]{accent-color:#d4a66d}button{background:#d9a76b;color:#1c1711;border:0;padding:12px 15px;border-radius:8px;font-weight:700;cursor:pointer}button.secondary{background:#273342;color:#e8edf3}button:disabled{opacity:.45;cursor:not-allowed}.field:has(input:disabled){opacity:.5}.segmented{display:grid;grid-template-columns:1fr 1fr;gap:7px}.segmented label{margin:0;display:flex;align-items:center;gap:6px;padding:10px;border:1px solid #394655;border-radius:8px;cursor:pointer;background:#1b2430}.segmented input{accent-color:#d4a66d}.settings-note{background:#192636;border-left:3px solid #d4a66d;padding:10px 12px;border-radius:4px;margin:8px 0 12px}.measure{font-variant-numeric:tabular-nums;color:#e3c69c;font-weight:600}.section-divider{border:0;border-top:1px solid #303945;margin:16px 0}.readonly{color:#9eacbc}.buttons{display:flex;gap:9px;flex-wrap:wrap}.check{display:flex;gap:8px;align-items:center;margin:10px 0}.check label{margin:0}.hint{font-size:12px;color:#9eacbc;line-height:1.55}#stage{position:relative;min-height:550px}#viewport{position:absolute;inset:0}#overlay{position:absolute;left:18px;top:17px;pointer-events:none;background:#151c25d9;border:1px solid #334051;padding:11px 14px;border-radius:9px;font-size:12px;line-height:1.7}#status{position:absolute;bottom:18px;left:18px;right:18px;max-width:750px;background:#1d2936e8;border:1px solid #3a4958;border-radius:9px;padding:12px 15px;font-size:13px;white-space:pre-wrap;line-height:1.5}.good{color:#9cdbb0}.bad{color:#ffb0a4}.footer{padding:12px 22px;border-top:1px solid #303945;color:#9eacbc;font-size:12px}@media(max-width:850px){main{display:block}aside{max-height:none;border-right:0;border-bottom:1px solid #303945}#stage{height:65vh;min-height:430px}}
 
-/* V2.9 workflow improvements; no geometry-engine changes */
+/* V3.0 user experience and workflow controls */
 :root{color-scheme:dark}button:focus-visible,input:focus-visible,select:focus-visible,.dropzone:focus-visible{outline:2px solid #e3bd84;outline-offset:3px}
 .workflow{position:sticky;top:-22px;z-index:8;background:#10151cf5;border-bottom:1px solid #394655;margin:-22px -22px 20px;padding:16px 22px 14px;backdrop-filter:blur(8px)}
 .workflow .buttons{display:grid;grid-template-columns:1fr 1fr}.workflow button{padding:12px 9px;min-height:44px}
@@ -42,7 +42,7 @@
 <div class="field"><label for="bevel">Edge size (mm)</label><input id="bevel" type="number" min="0" max="2" step="0.05" value="0.25"></div>
 <div class="field"><label for="simplify">SVG simplification (mm)</label><input id="simplify" type="number" min="0" max="0.5" step="0.01" value="0.02"></div><p class="hint">Effective contour tolerance is the larger of Curve accuracy and SVG simplification. Set simplification to 0 to preserve maximum detail allowed by Curve accuracy.</p><p class="hint">Contour uses a single convex silhouette around the artwork, connecting disconnected islands. It is not a tight concave outline. Bevel size is clamped to fit relief depth. Rounded uses eight progressive contour bands; chamfer uses six. V2.8 may reduce the entire bevel width to find a valid mesh; it does not yet vary width locally. Actual applied width is reported.</p></section>
 <section><h2>05 / Projects</h2><div class="buttons"><button class="secondary" id="save">Save project JSON</button><button class="secondary" id="load">Load project JSON</button><input type="file" id="projectFile" accept=".json,application/json" hidden></div><p class="hint">Project JSON includes SVG artwork and all settings; no server is used.</p></section>
-<section><h2>06 / Final checks</h2><p class="hint">V2.8 performs basic triangle, edge-manifold and degenerate-face checks. Warnings are not a guarantee of slicer compatibility. STL is unitless; import into Bambu Studio as millimeters.</p></section>
+<section><h2>06 / Final checks</h2><p class="hint">V3.0 checks triangle integrity, boundary edges, non-manifold edges, and degenerate faces before allowing STL export. Automatic bevel recovery and narrowly scoped geometry repair may be applied when necessary. Warnings are not a guarantee of slicer compatibility. STL is unitless; import into Bambu Studio as millimeters.</p></section>
 </aside><div id="stage"><div id="viewport"></div><div id="stageTools"><button id="resetView" title="Recenter and fit your stamp in the 3D view">⤢ Fit view</button></div><div id="overlay"><b>3D preview</b><br>Drag to rotate · Scroll to zoom<br>Right-drag to pan</div><div id="status" aria-live="polite">Loading 3D libraries… Internet access is required when opening this HTML file.</div></div></main><div class="footer">V3.0 stable · Independent artwork sizing · Validated SVG-to-STL export · Test printed stamps on a leather offcut before production use.</div>
 <script type="module">
 import * as THREE from 'three';
@@ -202,7 +202,7 @@ function baseOutline(kind,w,h,corner,points,margin){let s=new THREE.Shape();if(k
  return s}
 function solid(shape,z0,z1,curve,edge,bevel){const depth=z1-z0;if(depth<=0)throw Error('Invalid solid depth');const size=edge==='sharp'?0:Math.min(bevel,depth*0.22);const geom=new THREE.ExtrudeGeometry(shape,{depth,steps:1,curveSegments:curve,bevelEnabled:size>0,bevelThickness:size,bevelSize:size,bevelSegments:edge==='round'?5:1});geom.computeBoundingBox();geom.translate(0,0,z0-geom.boundingBox.min.z);return geom}
 function geometryReport(g){const pos=g.getAttribute('position'),index=g.getIndex();if(!pos)return 'No mesh vertices';const edges=new Map(),vertex=new Map();let degenerate=0,triangles=0;const key=i=>{const x=pos.getX(i),y=pos.getY(i),z=pos.getZ(i);return [x,y,z].map(v=>Math.round(v*10000)).join(',')};const id=i=>{const k=key(i);if(!vertex.has(k))vertex.set(k,vertex.size);return vertex.get(k)};const n=index?index.count:pos.count;for(let i=0;i+2<n;i+=3){const ia=index?index.getX(i):i,ib=index?index.getX(i+1):i+1,ic=index?index.getX(i+2):i+2;const a=id(ia),b=id(ib),c=id(ic);if(a===b||b===c||c===a){degenerate++;continue}const v0=new THREE.Vector3(pos.getX(ia),pos.getY(ia),pos.getZ(ia)),v1=new THREE.Vector3(pos.getX(ib),pos.getY(ib),pos.getZ(ib)),v2=new THREE.Vector3(pos.getX(ic),pos.getY(ic),pos.getZ(ic));if(new THREE.Vector3().crossVectors(v1.sub(v0),v2.sub(v0)).lengthSq()<1e-14){degenerate++;continue}triangles++;for(const [u,v] of [[a,b],[b,c],[c,a]]){const k=u<v?u+':'+v:v+':'+u;edges.set(k,(edges.get(k)||0)+1)}}let boundary=0,nonmanifold=0;for(const count of edges.values()){if(count===1)boundary++;else if(count!==2)nonmanifold++}return {triangles,vertices:vertex.size,degenerate,boundary,nonmanifold}}
-// V2.8: Construct one closed boundary representation from 2D regions.
+// Construct one closed boundary representation from 2D regions.
 // No 3D Boolean or independent overlapping shells. Every surface is emitted once.
 const CS=10000;
 function xyPath(points){return points.map(p=>({X:Math.round(p.x*CS),Y:Math.round(p.y*CS)}))}
@@ -220,7 +220,7 @@ function loopArea(p){let a=0;for(let i=0;i<p.length;i++){let q=p[(i+1)%p.length]
 function cleanLoop(p){const a=[];for(const v of p){if(!a.length||v.X!==a.at(-1).X||v.Y!==a.at(-1).Y)a.push(v)}if(a.length>1&&a[0].X===a.at(-1).X&&a[0].Y===a.at(-1).Y)a.pop();return a}
 function shapeLoops(shape,detail){const outer=cleanLoop(xyPath(shape.extractPoints(detail).shape));const holes=shape.extractPoints(detail).holes.map(x=>cleanLoop(xyPath(x)));return [outer,...holes].filter(p=>p.length>=3)}
 function baseLoops(shape,detail){return shapeLoops(shape,detail)}
-// V3.0 experimental: weld only *exposed boundary endpoints* that differ by
+// V3.0: weld only *exposed boundary endpoints* that differ by
 // up to two Clipper grid units.  The 0.212 mm bunny diagnostic contains
 // (8.2749,10.9607) and (8.2748,10.9608) at identical Z.  Changing the mesh
 // coordinates (rather than merely rounding the validator) is essential.
@@ -283,7 +283,7 @@ function weldBoundaryEndpoints(geom, tolerance=0.00022){
  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(coords,3));g.computeVertexNormals();
  return {geometry:g,merged};
 }
-// V3.0 experimental: conservative boundary-to-boundary T-junction stitching.
+// V3.0: conservative boundary-to-boundary T-junction stitching.
 // Only split a boundary edge A-B if the shorter complementary open edges
 // A-C and C-B are present. Arbitrary collinear vertices are NOT sufficient:
 // splitting against them can create an edge shared by three faces.
@@ -603,7 +603,7 @@ function build(){try{$('build').disabled=true;$('export').disabled=true;status.c
  const outline=baseOutline(kind,w,h,corner,raw.points,margin);
  const baseP=baseLoops(outline,Math.min(curve,96));
  const artP=optimized.shapes.flatMap(shape=>shapeLoops(shape,3));
- // V2.8: Fail closed, with explicit width reduction instead of a silent
+ // Fail closed, with explicit width reduction instead of a silent
  // invalid STL or a disguised sharp fallback. A valid candidate is accepted
  // only when its mesh actually has more triangles than the sharp baseline.
  let geometry=null,report=null,appliedBevel=bevel,attemptLog=[],faultDetails=[];
