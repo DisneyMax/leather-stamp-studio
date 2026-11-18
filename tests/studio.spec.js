@@ -466,3 +466,16 @@ test('numeric artwork placement updates the 2D view, STL, and saved project', as
   await expect(page.locator('#artY')).toHaveValue('0');
   await expect(page.locator('#artRotation')).toHaveValue('0');
 });
+
+test('loading an SVG opens 2D, and generating the stamp switches back to 3D', async ({ page }) => {
+  await expect(page.locator('#designView')).toBeHidden();
+  await load(page, compound);
+  await expect(page.locator('#designView')).toBeVisible();
+  await expect(page.locator('#designArt')).toHaveAttribute('d', /^M/);
+  await expect(page.locator('#viewport canvas')).toBeHidden();
+
+  await generate(page);
+  await expect(page.locator('#designView')).toBeHidden();
+  await expect(page.locator('#viewport canvas')).toBeVisible();
+  await expect(page.locator('#export')).toBeEnabled();
+});

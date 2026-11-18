@@ -159,7 +159,7 @@ async function acceptSVG(file){
   svgText=txt;fileLabel(file.name);status.textContent=`Loaded ${file.name}. Click Generate 3D stamp.`;
   status.className='';$('export').disabled=true;progress('Artwork loaded · Generate to preview');
   refreshAspectFromSVG();if($('customArt').checked)setCustomFromFit();
-  scheduleDesignPreview();
+  showDesignView(true);
  }catch(e){showLoadError(e)}
 }
 $('file').addEventListener('change',e=>acceptSVG(e.target.files?.[0]));
