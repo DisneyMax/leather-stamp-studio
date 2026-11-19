@@ -3,7 +3,7 @@ const test = require('node:test');
 const Clipper = require('clipper-lib');
 const createPolygonGeometry = require('../polygon-geometry');
 
-const { CS, xyPath, region, rings, offsetArtworkPaths } = createPolygonGeometry(Clipper);
+const { CS, xyPath, region, rings, offsetArtwork } = createPolygonGeometry(Clipper);
 
 function square(min, max, hole = false) {
   const corners = [
@@ -18,7 +18,7 @@ const artwork = [square(0, 32), square(4, 28, true), square(8, 24), square(12, 2
 for (const offset of [-0.5, 0.5]) {
   test(`${offset} mm preserves the four nested boundaries and moves their edges`, () => {
     const original = structuredClone(artwork);
-    const tree = region(Clipper.ClipType.ctUnion, offsetArtworkPaths(artwork, offset));
+    const tree = region(Clipper.ClipType.ctUnion, offsetArtwork(artwork, offset).artworkPaths);
     assert.deepEqual(rings(tree).map(({ path, hole }) => ({
       hole,
       minX: Math.min(...path.map(point => point.X)) / CS,
@@ -34,9 +34,20 @@ for (const offset of [-0.5, 0.5]) {
 }
 
 test('zero offset returns the original paths', () => {
-  assert.equal(offsetArtworkPaths(artwork, 0), artwork);
+  assert.equal(offsetArtwork(artwork, 0).artworkPaths, artwork);
 });
 
 test('erosion that removes all artwork reports a generation error', () => {
-  assert.throws(() => offsetArtworkPaths([square(0, 0.6)], -0.5), /removed all artwork/);
+  assert.throws(() => offsetArtwork([square(0, 0.6)], -0.5), /removed all artwork/);
+});
+
+test('offset contour cleanup removes grid-scale slivers without closing a hole', () => {
+  const { cleanOffsetRings } = createPolygonGeometry(Clipper);
+  const outer = square(0, 10);
+  outer.splice(1, 0, { X: 1, Y: 1 });
+  const hole = square(2, 8, true);
+  const cleaned = cleanOffsetRings([outer, hole]);
+  assert.equal(cleaned[0].length, 4);
+  const tree = region(Clipper.ClipType.ctUnion, cleaned);
+  assert.deepEqual(rings(tree).map(({ hole }) => hole), [false, true]);
 });
