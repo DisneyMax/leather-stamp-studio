@@ -40,3 +40,14 @@ test('zero offset returns the original paths', () => {
 test('erosion that removes all artwork reports a generation error', () => {
   assert.throws(() => offsetArtwork([square(0, 0.6)], -0.5), /removed all artwork/);
 });
+
+test('offset contour cleanup removes grid-scale slivers without closing a hole', () => {
+  const { cleanOffsetRings } = createPolygonGeometry(Clipper);
+  const outer = square(0, 10);
+  outer.splice(1, 0, { X: 1, Y: 1 });
+  const hole = square(2, 8, true);
+  const cleaned = cleanOffsetRings([outer, hole]);
+  assert.equal(cleaned[0].length, 4);
+  const tree = region(Clipper.ClipType.ctUnion, cleaned);
+  assert.deepEqual(rings(tree).map(({ hole }) => hole), [false, true]);
+});

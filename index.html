@@ -432,7 +432,7 @@ function geometryReport(g){
 
 // Construct one closed boundary representation from 2D regions.
 // No 3D Boolean or independent overlapping shells. Every surface is emitted once.
-const {CS,xyPath,cleanLoop,region,rings,paths,offsetArtwork}=window.createPolygonGeometry(window.ClipperLib);
+const {CS,xyPath,cleanLoop,region,rings,paths,cleanOffsetRings,offsetArtwork}=window.createPolygonGeometry(window.ClipperLib);
 function shapeLoops(shape,detail){const outer=cleanLoop(xyPath(shape.extractPoints(detail).shape));const holes=shape.extractPoints(detail).holes.map(x=>cleanLoop(xyPath(x)));return [outer,...holes].filter(p=>p.length>=3)}
 function baseLoops(shape,detail){return shapeLoops(shape,detail)}
 // V3.0: weld only *exposed boundary endpoints* that differ by
@@ -697,7 +697,8 @@ function buildMesh({baseTree,inside,artwork},base,depth,raised,edge,bevel){
  // whether each triangulated vertex lies on any segment of the inner boundary,
  // rather than requiring an exact vertex-set match.
  function slopedBand(bandTree,innerTree,zOuter,zInner){
-   const eps=Math.max(1,Math.round(0.0025*CS));
+   // Match within one Clipper grid unit so close outer vertices keep their own height.
+   const eps=1;
    const innerSegments=[];
    for(const {path} of rings(innerTree)){
      const loop=cleanLoop(path),n=loop.length;
@@ -782,7 +783,7 @@ function buildMesh({baseTree,inside,artwork},base,depth,raised,edge,bevel){
        const offset=new C.ClipperOffset(2,0.015*CS),inset=[];
        offset.AddPaths(artwork,C.JoinType.jtRound,C.EndType.etClosedPolygon);
        offset.Execute(inset,-insetDistance*CS);
-       const nextTree=region(C.ClipType.ctIntersection,inset,artwork);
+       const nextTree=region(C.ClipType.ctIntersection,cleanOffsetRings(inset),artwork);
        const nextPaths=paths(nextTree);
        if(!nextPaths.length)throw Error('Edge size collapses the artwork. Reduce bevel size or choose Sharp.');
        const band=region(C.ClipType.ctDifference,currentPaths,nextPaths);
