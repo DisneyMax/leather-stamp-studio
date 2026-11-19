@@ -147,7 +147,7 @@ test('V3.1 project round-trip and V3.0 project missing the adjustment', async ({
   await load(page, compound, { designOffset: -0.37, edge: 'sharp', artSizing: 'custom', artWidth: 25, artHeight: 24 });
   await expect(page.locator('#designOffsetSlider')).toHaveValue('-0.35');
   await expect(page.locator('#artWidth')).toHaveValue('25');
-  await page.locator('#projectSettings summary').click();
+  await page.locator('#projectSettings > summary').click();
   const saved = JSON.parse(await download(page, '#save'));
   expect(saved).toMatchObject({
     format: 'LeatherStampStudio', version: 2, svg: compound,
