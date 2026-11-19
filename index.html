@@ -69,8 +69,6 @@
 #stage.show-design #status{display:none}
 #stage.show-design #viewport{visibility:hidden}
 @media(max-width:850px){#overlay{top:55px}#designView{inset:50px 10px 15px}}
-#artPlacement{margin-top:12px}
-#artPlacement summary{cursor:pointer;font-size:13px;margin-bottom:10px}
 #printabilityNote{color:#e6bf8b;line-height:1.4;margin:7px 0 0;font-size:12px}
 #designFooter{display:grid;justify-items:center;gap:4px}
 #changeControls{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:4px 12px;font-size:12px}
@@ -107,18 +105,8 @@
 <div class="pair"><div class="field"><label for="width">Base width (mm)</label><input id="width" type="number" min="10" max="200" step="1" value="40"></div><div class="field"><label for="height">Base height (mm)</label><input id="height" type="number" min="10" max="200" step="1" value="40"></div></div>
 <div class="field"><label for="baseShape">Base shape</label><select id="baseShape"><option value="rect">Rectangle</option><option value="roundrect">Rounded rectangle</option><option value="circle">Circle / ellipse</option><option value="contour">SVG contour (convex silhouette)</option></select></div>
 <p id="sizeSummary" class="hint measure" aria-live="polite">Generate to see artwork dimensions.</p>
-<details id="artPlacement" class="nested-advanced">
-<summary>Artwork position and rotation</summary>
-<div class="pair">
-<div class="field"><label for="artX">Horizontal offset (mm)</label><input id="artX" type="number" min="-200" max="200" step="0.5" value="0"></div>
-<div class="field"><label for="artY">Vertical offset (mm)</label><input id="artY" type="number" min="-200" max="200" step="0.5" value="0"></div>
-</div>
-<div class="field"><label for="artRotation">Clockwise rotation (°)</label><input id="artRotation" type="number" step="1" value="0"></div>
-<p class="hint">Positive offsets move the artwork right and up in the 2D view.</p>
-<div class="buttons"><button type="button" class="secondary" id="centerArt">Center artwork</button><button type="button" class="secondary" id="resetPlacement">Reset position and rotation</button></div>
-</details>
 </section>
-<details class="advanced-group" id="advancedSettings"><summary><span>Advanced settings</span><small>Depth, artwork thickness, and mesh detail</small></summary>
+<details class="advanced-group" id="advancedSettings"><summary><span>Advanced settings</span><small>Depth, artwork adjustments, and mesh detail</small></summary>
 <div class="advanced-body">
 <p class="hint">The defaults are our tested starting values. Adjust only if you need a different impression depth, clearance or edge detail.</p>
 <div class="pair">
@@ -133,6 +121,16 @@
 <div class="offset-control"><input id="designOffset" type="number" min="-0.5" max="0.5" step="any" value="0.00" required aria-describedby="offsetHelp"><input id="designOffsetSlider" type="range" min="-0.5" max="0.5" step="0.05" value="0" aria-label="Design thickness adjustment"></div>
 <p id="offsetHelp" class="hint">+ thickens details · − thins them · 0 keeps your SVG unchanged. The slider moves in 0.05 mm steps. Type a value for finer control. A strong adjustment can close small holes or remove thin details.</p>
 </div>
+<details id="artPlacement" class="nested-advanced">
+<summary>Artwork position and rotation</summary>
+<div class="pair">
+<div class="field"><label for="artX">Horizontal offset (mm)</label><input id="artX" type="number" min="-200" max="200" step="0.5" value="0"></div>
+<div class="field"><label for="artY">Vertical offset (mm)</label><input id="artY" type="number" min="-200" max="200" step="0.5" value="0"></div>
+</div>
+<div class="field"><label for="artRotation">Clockwise rotation (°)</label><input id="artRotation" type="number" step="1" value="0"></div>
+<p class="hint">Positive offsets move the artwork right and up in the 2D view.</p>
+<div class="buttons"><button type="button" class="secondary" id="centerArt">Center artwork</button><button type="button" class="secondary" id="resetPlacement">Reset position and rotation</button></div>
+</details>
 <details class="nested-advanced"><summary>Mesh detail controls</summary>
 <div class="pair"><div class="field"><label for="curve">Curve detail</label><input id="curve" type="number" min="3" max="128" step="1" value="64"></div>
 <div class="field"><label for="tolerance">Curve accuracy (mm)</label><input id="tolerance" type="number" min="0.005" max="0.3" step="0.005" value="0.035"></div></div>
