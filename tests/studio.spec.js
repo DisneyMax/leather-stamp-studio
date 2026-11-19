@@ -109,6 +109,7 @@ for (const mode of ['raised', 'recessed']) {
 test('advanced controls follow the selected mode, base shape and sizing', async ({ page }) => {
   const advanced = page.locator('#advancedSettings');
   await expect(advanced).toHaveJSProperty('open', false);
+  await expect(page.locator('#artPlacement > summary')).toBeHidden();
   await expect(page.locator('#designOffset')).toBeHidden();
   await expect(page.locator('#exactSizeFields')).toBeHidden();
   await page.locator('#customArt').check();
@@ -422,7 +423,8 @@ test('numeric artwork placement updates the 2D view, STL, and saved project', as
   await load(page, svg, { edge: 'sharp', artSizing: 'custom', artWidth: 12, artHeight: 6, mirror: false });
   await expect(page.locator('#mode option')).toHaveText(['Debossing (raised stamp)', 'Embossing (recessed die)']);
   await page.getByRole('button', { name: '2D design' }).click();
-  await page.locator('#artPlacement > summary').click();
+  await page.locator('#advancedSettings > summary').click();
+  await page.locator('#advancedSettings #artPlacement > summary').click();
   const design = page.locator('#designArt');
   await expect(design).toHaveAttribute('d', /^M/);
   const original = await design.getAttribute('d');
@@ -484,7 +486,8 @@ test('dragging snaps to center, updates numeric offsets and saves the exported p
   const svg = artwork('<path d="M0 0H12V6H0Z"/>');
   await load(page, svg, { edge: 'sharp', artSizing: 'custom', artWidth: 12, artHeight: 6 });
   await page.getByRole('button', { name: '2D design' }).click();
-  await page.locator('#artPlacement > summary').click();
+  await page.locator('#advancedSettings > summary').click();
+  await page.locator('#advancedSettings #artPlacement > summary').click();
   const design = page.locator('#designArt');
   await expect(design).toHaveAttribute('d', /^M/);
   const start = await page.locator('#designCanvas').evaluate(canvas => {
