@@ -51,6 +51,12 @@
     return rings(tree).map(({ path }) => path);
   }
 
+  // Offset operations can add slivers only a few coordinate-grid units wide.
+  // Clean those before triangulation without using the user-facing SVG tolerance.
+  function cleanOffsetRings(loops) {
+    return clipperLibrary.Clipper.CleanPolygons(loops, 2);
+  }
+
   // The input is already sized in millimeters. Expanding filled regions
   // contracts their holes, and shrinking filled regions expands their holes.
   function offsetArtworkPaths(originalPaths, offsetMm) {
@@ -62,10 +68,10 @@
     offset.AddPaths(canonical, JoinType.jtRound, EndType.etClosedPolygon);
     offset.Execute(result, offsetMm * CS);
     if (!result.length) throw Error('Design thickness adjustment removed all artwork. Reduce the negative offset.');
-    const output = paths(region(ClipType.ctUnion, result));
+    const output = paths(region(ClipType.ctUnion, cleanOffsetRings(result)));
     if (!output.length) throw Error('Design offset produced no usable filled artwork.');
     return output;
   }
 
-  return { CS, xyPath, cleanLoop, region, rings, paths, offsetArtworkPaths };
+  return { CS, xyPath, cleanLoop, region, rings, paths, cleanOffsetRings, offsetArtworkPaths };
 });
