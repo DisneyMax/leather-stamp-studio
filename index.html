@@ -78,6 +78,13 @@
 #changeRemoved{fill:#ff8598}
 #changeAdded,#changeRemoved{pointer-events:none}
 .addedSwatch{color:#69d7f5}.removedSwatch{color:#ff8598}
+#featureControls{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:4px 12px;font-size:12px}
+#featureControls label{display:flex;align-items:center;gap:4px;margin:0}
+#featureControls input[type=number]{width:70px;padding:4px}
+#featureControls [hidden]{display:none}
+#featureStatus{margin:0;color:#e9edf2}
+#narrowFeatures{fill:#e4a5ff;pointer-events:none}
+#smallGaps{fill:#a3efbb;pointer-events:none}
 </style>
 <script type="importmap">{"imports":{"three":"https://esm.sh/three@0.180.0","three/addons/":"https://esm.sh/three@0.180.0/examples/jsm/"}}</script>
 <script src="https://cdn.jsdelivr.net/npm/clipper-lib@6.4.2/clipper.js"></script>
@@ -150,6 +157,8 @@
 <path id="designArt" fill-rule="evenodd"></path>
 <path id="changeAdded" fill-rule="evenodd" aria-hidden="true"></path>
 <path id="changeRemoved" fill-rule="evenodd" aria-hidden="true"></path>
+<path id="narrowFeatures" fill-rule="evenodd" aria-hidden="true"></path>
+<path id="smallGaps" fill-rule="evenodd" aria-hidden="true"></path>
 <path id="designGuides" fill="none" aria-hidden="true"></path>
 </svg>
 <div id="designFooter">
@@ -160,6 +169,13 @@
 <span class="addedSwatch">Blue = added artwork</span> · <span class="removedSwatch">Pink = removed artwork</span>
 </p>
 <p id="noChanges" class="hint" role="status" hidden>No thickness changes to show.</p>
+</div>
+<div id="featureControls">
+<label><input id="showFeatures" type="checkbox"> Check small features</label>
+<label id="minimumFeatureField" hidden>Minimum feature (mm)
+<input id="minimumFeature" type="number" min="0.05" max="5" step="any" value="0.4" required>
+</label>
+<p id="featureStatus" class="hint" role="status" hidden></p>
 </div>
 </div>
 </div>
@@ -430,7 +446,7 @@ function geometryReport(g){
 
 // Construct one closed boundary representation from 2D regions.
 // No 3D Boolean or independent overlapping shells. Every surface is emitted once.
-const {CS,xyPath,cleanLoop,region,rings,paths,cleanOffsetRings,offsetArtwork}=window.createPolygonGeometry(window.ClipperLib);
+const {CS,xyPath,cleanLoop,region,rings,paths,cleanOffsetRings,offsetArtwork,estimateSmallFeatures}=window.createPolygonGeometry(window.ClipperLib);
 function shapeLoops(shape,detail){const outer=cleanLoop(xyPath(shape.extractPoints(detail).shape));const holes=shape.extractPoints(detail).holes.map(x=>cleanLoop(xyPath(x)));return [outer,...holes].filter(p=>p.length>=3)}
 function baseLoops(shape,detail){return shapeLoops(shape,detail)}
 // V3.0: weld only *exposed boundary endpoints* that differ by
@@ -895,11 +911,40 @@ function drawThicknessChanges(changes,available){
 }
 $('showChanges').addEventListener('change',scheduleDesignPreview);
 
+function drawFeatureCheck(artwork){
+ const enabled=$('showFeatures').checked;
+ const minimum=$('minimumFeature');
+ const note=$('featureStatus');
+ $('minimumFeatureField').hidden=!enabled;
+ let narrow=[],gaps=[],message='';
+ if(enabled&&artwork){
+   if(!minimum.validity.valid){
+     message='Enter a minimum feature size from 0.05 to 5 mm.';
+   }else{
+     try{
+       ({narrow,gaps}=estimateSmallFeatures(artwork,minimum.valueAsNumber));
+       message=narrow.length||gaps.length
+         ?'Estimated trouble spots · Purple: narrow artwork · Green: small gaps'
+         :'No small features flagged at this threshold.';
+     }catch{
+       message='Unable to estimate small features for this design.';
+     }
+   }
+ }
+ $('narrowFeatures').setAttribute('d',svgPath(narrow));
+ $('smallGaps').setAttribute('d',svgPath(gaps));
+ if(note.textContent!==message)note.textContent=message;
+ note.hidden=!message;
+}
+$('showFeatures').addEventListener('change',scheduleDesignPreview);
+$('minimumFeature').addEventListener('input',scheduleDesignPreview);
+
 let dragSource, artworkDrag;
 function renderDesignPreview(){
  try{
    const {baseTree,artwork,artP,raw,offset,changes}=prepareDesign($('showChanges').checked);
    drawThicknessChanges(changes,true);
+   drawFeatureCheck(artwork);
    showPrintabilityNote(offset);
    updateArtworkSummary(raw);
    const plate=paths(baseTree);
@@ -920,6 +965,7 @@ function renderDesignPreview(){
    $('designStatus').textContent=`${type} in gold · Base in blue-gray · Drag artwork to move`;
  }catch(error){
    drawThicknessChanges(undefined,false);
+   drawFeatureCheck();
    showPrintabilityNote();
    dragSource=undefined;
    const keepPreview=error instanceof ArtworkSizeError&&$('customArt').checked&&renderedSVG===svgText;

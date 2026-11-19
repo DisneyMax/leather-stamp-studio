@@ -79,5 +79,29 @@
     };
   }
 
-  return { CS, xyPath, cleanLoop, region, rings, paths, cleanOffsetRings, offsetArtwork };
+  function estimateSmallFeatures(artwork, minimumMm) {
+    const { ClipperOffset, ClipType, JoinType, EndType } = clipperLibrary;
+    const radius = minimumMm * CS / 2;
+
+    function resize(loops, distance) {
+      if (!loops.length) return [];
+      const offset = new ClipperOffset(2);
+      const result = [];
+      // Mitered corners avoid flagging the normal corners of a wide rectangle.
+      offset.AddPaths(loops, JoinType.jtMiter, EndType.etClosedPolygon);
+      offset.Execute(result, distance);
+      return result.length ? paths(region(ClipType.ctUnion, result)) : [];
+    }
+
+    // Shrink and regrow to find thin filled regions. Grow and shrink to
+    // find small openings. The differences are geometric estimates.
+    const opened = resize(resize(artwork, -radius), radius);
+    const closed = resize(resize(artwork, radius), -radius);
+    return {
+      narrow: opened.length ? paths(region(ClipType.ctDifference, artwork, opened)) : artwork,
+      gaps: closed.length ? paths(region(ClipType.ctDifference, closed, artwork)) : [],
+    };
+  }
+
+  return { CS, xyPath, cleanLoop, region, rings, paths, cleanOffsetRings, offsetArtwork, estimateSmallFeatures };
 });

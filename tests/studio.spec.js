@@ -564,3 +564,35 @@ test('view cube switches the 3D camera and is hidden in 2D', async ({ page }) =>
   await page.getByRole('button', { name: '2D design' }).click();
   await expect(shortcuts).toBeHidden();
 });
+
+test('minimum feature check highlights thin artwork and small holes without changing export', async ({ page }) => {
+  const svg = artwork('<path fill-rule="evenodd" d="M0 0H20V20H0Z M9.9 9.9H10.1V10.1H9.9Z M24 5H24.2V15H24Z"/>');
+  await load(page, svg, { edge: 'sharp', mirror: false, artSizing: 'custom', artWidth: 24.2, artHeight: 20 });
+  await page.getByRole('button', { name: '2D design' }).click();
+  const toggle = page.getByRole('checkbox', { name: 'Check small features' });
+  const narrow = page.locator('#narrowFeatures');
+  const gaps = page.locator('#smallGaps');
+  const note = page.locator('#featureStatus');
+  const covers = (path, x, y) => path.evaluate((element, point) =>
+    element.isPointInFill(new DOMPoint(...point)), [x, y]);
+  await expect(narrow).toHaveAttribute('d', '');
+  await toggle.check();
+  await expect(note).toContainText('Estimated trouble spots');
+  expect(await covers(narrow, 12, 0)).toBe(true);
+  expect(await covers(narrow, -6, 0)).toBe(false);
+  expect(await covers(gaps, -2.1, 0)).toBe(true);
+
+  const minimum = page.getByRole('spinbutton', { name: 'Minimum feature (mm)' });
+  await minimum.fill('0.10');
+  await expect(note).toContainText('No small features flagged');
+  await expect(narrow).toHaveAttribute('d', '');
+  await expect(gaps).toHaveAttribute('d', '');
+  await minimum.fill('');
+  await expect(note).toContainText('from 0.05 to 5 mm');
+  await minimum.fill('0.4');
+  await generate(page);
+  const triangles = parseSTL(await download(page, '#export'));
+  expectClosedMesh(triangles);
+  expect(surfaceHeight(triangles, 12, 0)).toBe(7.5);
+  expect(surfaceHeight(triangles, -2.1, 0)).toBe(6);
+});
