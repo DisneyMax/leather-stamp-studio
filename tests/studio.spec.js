@@ -244,6 +244,12 @@ for (const edge of ['chamfer', 'round']) {
 }
 
 test('recommended settings generate the included paw print', async ({ page }) => {
+  const guide = page.locator('#firstStampGuide');
+  await expect(guide.locator('ol')).toBeHidden();
+  await page.getByText('First stamp guide', { exact: true }).click();
+  await expect(guide.locator('ol')).toBeVisible();
+  await expect(guide).toContainText('Bambu Studio');
+  await page.getByRole('button', { name: 'Use example paw print' }).click();
   await generate(page);
   expectClosedMesh(parseSTL(await download(page, '#export')));
 });

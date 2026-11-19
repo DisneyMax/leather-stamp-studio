@@ -85,6 +85,9 @@
 #featureStatus{margin:0;color:#e9edf2}
 #narrowFeatures{fill:#e4a5ff;pointer-events:none}
 #smallGaps{fill:#a3efbb;pointer-events:none}
+#firstStampGuide ol{padding-inline-start:19px;margin:0}
+#firstStampGuide li+li{margin-top:8px}
+#firstStampGuide strong,#firstStampGuide b{color:#d8e2eb}
 </style>
 <script type="importmap">{"imports":{"three":"https://esm.sh/three@0.180.0","three/addons/":"https://esm.sh/three@0.180.0/examples/jsm/"}}</script>
 <script src="https://cdn.jsdelivr.net/npm/clipper-lib@6.4.2/clipper.js"></script>
@@ -95,6 +98,15 @@
 <section class="ui-section"><h2>01 / Your artwork</h2>
 <div class="field"><label for="file" class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Choose or drop SVG artwork"><strong>＋ Choose an SVG or drop it here</strong><small>Filled vector artwork works best</small><input id="file" type="file" accept=".svg,image/svg+xml"></label><div id="artworkName">Using included paw-print example</div></div>
 <button class="secondary quiet-button" id="demo">Use example paw print</button>
+<details id="firstStampGuide" class="nested-advanced">
+<summary>First stamp guide</summary>
+<ol class="hint">
+<li><strong>Start with the paw print.</strong> Choose <b>Use example paw print</b> and leave <b>Fit to base</b> selected. For your own SVG, use filled shapes and convert text and strokes to outlines in your vector editor.</li>
+<li><strong>Choose the impression.</strong> Start with <b>Debossing (raised stamp)</b> to press the paw into the leather. Choose <b>Embossing (recessed die)</b> for a raised impression. Keep <b>Mirror artwork for stamping</b> on for artwork that should read correctly on the leather. If the SVG is already reversed, turn it off.</li>
+<li><strong>Review the design.</strong> Open <b>2D design</b> to check placement and holes. Turn on <b>Check small features</b> for estimated trouble spots. If you adjust thickness, use <b>Show thickness changes</b> to see what was added or removed.</li>
+<li><strong>Generate and inspect.</strong> Select <b>Generate 3D stamp</b>, check the 3D preview, and select <b>Download STL</b> once the mesh passes validation. In Bambu Studio, import in millimeters, verify the dimensions, and inspect the sliced layers for missing details or filled holes. Test the printed stamp on a leather offcut.</li>
+</ol>
+</details>
 </section>
 <section class="ui-section"><h2>02 / Stamp setup</h2>
 <div class="field"><label for="mode">Impression</label><select id="mode"><option value="raised">Debossing (raised stamp)</option><option value="recessed">Embossing (recessed die)</option></select></div>
