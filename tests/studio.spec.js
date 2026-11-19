@@ -189,6 +189,17 @@ test('offsets can close a small hole or remove a narrow island', async ({ page }
   await page.getByRole('button', { name: '2D design' }).click();
   const note = page.locator('#printabilityNote');
   await expect(note).toContainText('1 fewer hole and 1 fewer filled region');
+  const toggle = page.getByRole('checkbox', { name: 'Show thickness changes' });
+  const added = page.locator('#changeAdded');
+  const removed = page.locator('#changeRemoved');
+  const covers = (path, x, y) => path.evaluate((element, point) =>
+    element.isPointInFill(new DOMPoint(...point)), [x, y]);
+  await expect(added).toHaveAttribute('d', '');
+  await toggle.check();
+  await expect(added).toHaveAttribute('d', /^M/);
+  expect(await covers(added, 0.2, 0.2)).toBe(true);
+  expect(await covers(added, 2, 2)).toBe(false);
+  await expect(removed).toHaveAttribute('d', '');
   await generate(page);
   await expect(note).toContainText('1 fewer hole');
   await expect(page.locator('#export')).toBeEnabled();
@@ -196,7 +207,12 @@ test('offsets can close a small hole or remove a narrow island', async ({ page }
   expect(surfaceHeight(thick, 0.2, 0.2)).toBe(7.5);
   expectClosedMesh(thick);
   await page.locator('#advancedSettings > summary').click();
+  await page.getByRole('button', { name: '2D design' }).click();
   await page.locator('#designOffset').fill('-0.5');
+  await expect(removed).toHaveAttribute('d', /^M/);
+  expect(await covers(removed, -0.15, -0.15)).toBe(true);
+  expect(await covers(removed, 2, 2)).toBe(false);
+  await expect(added).toHaveAttribute('d', '');
   await generate(page);
   await expect(note).toContainText('1 fewer filled region');
   await expect(note).not.toContainText('fewer hole');
@@ -207,6 +223,11 @@ test('offsets can close a small hole or remove a narrow island', async ({ page }
   await page.getByRole('button', { name: '2D design' }).click();
   await page.locator('#designOffset').fill('0');
   await expect(note).toBeHidden();
+  await expect(page.locator('#noChanges')).toBeVisible();
+  await expect(added).toHaveAttribute('d', '');
+  await expect(removed).toHaveAttribute('d', '');
+  await toggle.uncheck();
+  await expect(page.locator('#noChanges')).toBeHidden();
   await expect(page.locator('#designArt')).toHaveAttribute('d', /^M/);
 });
 

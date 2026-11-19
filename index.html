@@ -72,6 +72,14 @@
 #artPlacement{margin-top:12px}
 #artPlacement summary{cursor:pointer;font-size:13px;margin-bottom:10px}
 #printabilityNote{color:#e6bf8b;line-height:1.4;margin:7px 0 0;font-size:12px}
+#designFooter{display:grid;justify-items:center;gap:4px}
+#changeControls{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:4px 12px;font-size:12px}
+#changeControls label{display:flex;align-items:center;gap:4px;margin:0}
+#changeLegend{margin:0;color:#e9edf2}
+#changeAdded{fill:#69d7f5}
+#changeRemoved{fill:#ff8598}
+#changeAdded,#changeRemoved{pointer-events:none}
+.addedSwatch{color:#69d7f5}.removedSwatch{color:#ff8598}
 </style>
 <script type="importmap">{"imports":{"three":"https://esm.sh/three@0.180.0","three/addons/":"https://esm.sh/three@0.180.0/examples/jsm/"}}</script>
 <script src="https://cdn.jsdelivr.net/npm/clipper-lib@6.4.2/clipper.js"></script>
@@ -142,9 +150,20 @@
 <svg id="designCanvas" role="img" aria-label="Top view of the stamp artwork and base">
 <path id="designPlate" fill-rule="evenodd"></path>
 <path id="designArt" fill-rule="evenodd"></path>
+<path id="changeAdded" fill-rule="evenodd" aria-hidden="true"></path>
+<path id="changeRemoved" fill-rule="evenodd" aria-hidden="true"></path>
 <path id="designGuides" fill="none" aria-hidden="true"></path>
 </svg>
+<div id="designFooter">
 <p id="designStatus" class="hint" role="status"></p>
+<div id="changeControls">
+<label><input id="showChanges" type="checkbox"> Show thickness changes</label>
+<p id="changeLegend" class="hint" role="status" hidden>
+<span class="addedSwatch">Blue = added artwork</span> · <span class="removedSwatch">Pink = removed artwork</span>
+</p>
+<p id="noChanges" class="hint" role="status" hidden>No thickness changes to show.</p>
+</div>
+</div>
 </div>
 <div id="stageTools"><button id="toggleDesign" aria-controls="designView" type="button">2D design</button><button id="resetView" title="Recenter and fit your stamp in the 3D view">⤢ Fit view</button></div>
 <div id="viewShortcut" role="group" aria-label="3D view shortcuts">
@@ -801,7 +820,18 @@ function resetArtworkPlacement(resetRotation){
 $('centerArt').onclick=()=>resetArtworkPlacement(false);
 $('resetPlacement').onclick=()=>resetArtworkPlacement(true);
 
-function prepareDesign(){
+function placeArtworkPaths(loops,x,y,rotation){
+ if(x===0&&y===0&&rotation===0)return loops;
+ // Rotate around the centered artwork origin and translate in base coordinates.
+ const radians=-rotation*Math.PI/180,cos=Math.cos(radians),sin=Math.sin(radians);
+ const gridX=Math.round(x*CS),gridY=Math.round(y*CS);
+ return loops.map(loop=>loop.map(p=>({
+   X:Math.round(p.X*cos-p.Y*sin)+gridX,
+   Y:Math.round(p.X*sin+p.Y*cos)+gridY
+ })));
+}
+
+function prepareDesign(compareOffset=false){
  const w=getNumber('width'),h=getNumber('height'),margin=getNumber('margin'),curve=getNumber('curve');
  const corner=getNumber('corner'),accuracy=getNumber('tolerance'),kind=$('baseShape').value;
  if(w<10||w>200||h<10||h>200)throw Error('Base width and height must be between 10 and 200 mm.');
@@ -824,20 +854,10 @@ function prepareDesign(){
    throw Error('Enter a design thickness adjustment from -0.50 to +0.50 mm.');
  const offsetMm=getNumber('designOffset');
  const offset=offsetArtwork(originalArtP,offsetMm);
- let artP=offset.artworkPaths;
  const x=getNumber('artX'),y=getNumber('artY'),rotation=getNumber('artRotation')%360;
  if(Math.abs(x)>200||Math.abs(y)>200)throw Error('Artwork offsets must be between -200 and 200 mm.');
  const placed=x!==0||y!==0||rotation!==0;
- if(placed){
-   // Mirror and size in artwork space, then rotate about its centered
-   // origin and translate in plate coordinates. SVG view inverts model Y.
-   const radians=-rotation*Math.PI/180,cos=Math.cos(radians),sin=Math.sin(radians);
-   const gridX=Math.round(x*CS),gridY=Math.round(y*CS);
-   artP=artP.map(loop=>loop.map(p=>({
-     X:Math.round(p.X*cos-p.Y*sin)+gridX,
-     Y:Math.round(p.X*sin+p.Y*cos)+gridY
-   })));
- }
+ const artP=placeArtworkPaths(offset.artworkPaths,x,y,rotation);
  const C=window.ClipperLib;
  // Block edits that would otherwise silently trim the design at the plate edge.
  if((placed||offsetMm>0)&&paths(region(C.ClipType.ctDifference,artP,baseP)).length){
@@ -846,20 +866,41 @@ function prepareDesign(){
  }
  const baseTree=region(C.ClipType.ctUnion,baseP);
  const artTree=region(C.ClipType.ctUnion,artP);
- const inside=region(C.ClipType.ctIntersection,paths(artTree),paths(baseTree));
+ const plate=paths(baseTree);
+ const inside=region(C.ClipType.ctIntersection,paths(artTree),plate);
  const artwork=paths(inside);
  if(!artwork.length)throw Error('Artwork does not intersect the stamp base');
- return {baseTree,inside,artwork,artP,w,h,kind,shapes,raw,optimized,effectiveTolerance,offsetMm,offset};
+ let changes;
+ if(compareOffset&&offset.artworkPaths!==originalArtP){
+   const original=placeArtworkPaths(originalArtP,x,y,rotation);
+   const before=paths(region(C.ClipType.ctIntersection,original,plate));
+   changes={
+     added:paths(region(C.ClipType.ctDifference,artwork,before)),
+     removed:before.length?paths(region(C.ClipType.ctDifference,before,artwork)):[]
+   };
+ }
+ return {baseTree,inside,artwork,artP,w,h,kind,shapes,raw,optimized,effectiveTolerance,offsetMm,offset,changes};
 }
 
 function svgPath(loops){
  return loops.map(loop=>loop.map(({X,Y},index)=>`${index?'L':'M'}${X/CS} ${-Y/CS}`).join('')+'Z').join('');
 }
 
+function drawThicknessChanges(changes,available){
+ $('changeAdded').setAttribute('d',svgPath(changes?.added??[]));
+ $('changeRemoved').setAttribute('d',svgPath(changes?.removed??[]));
+ const show=$('showChanges').checked&&available;
+ const hasChanges=!!(changes?.added.length||changes?.removed.length);
+ $('changeLegend').hidden=!show||!hasChanges;
+ $('noChanges').hidden=!show||hasChanges;
+}
+$('showChanges').addEventListener('change',scheduleDesignPreview);
+
 let dragSource, artworkDrag;
 function renderDesignPreview(){
  try{
-   const {baseTree,artwork,artP,raw,offset}=prepareDesign();
+   const {baseTree,artwork,artP,raw,offset,changes}=prepareDesign($('showChanges').checked);
+   drawThicknessChanges(changes,true);
    showPrintabilityNote(offset);
    updateArtworkSummary(raw);
    const plate=paths(baseTree);
@@ -879,6 +920,7 @@ function renderDesignPreview(){
    const type=$('mode').value==='raised'?'Raised artwork':'Recessed artwork';
    $('designStatus').textContent=`${type} in gold · Base in blue-gray · Drag artwork to move`;
  }catch(error){
+   drawThicknessChanges(undefined,false);
    showPrintabilityNote();
    dragSource=undefined;
    const keepPreview=error instanceof ArtworkSizeError&&$('customArt').checked&&renderedSVG===svgText;
