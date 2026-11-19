@@ -602,3 +602,45 @@ test('minimum feature check highlights thin artwork and small holes without chan
   expect(surfaceHeight(triangles, 12, 0)).toBe(7.5);
   expect(surfaceHeight(triangles, -2.1, 0)).toBe(6);
 });
+
+test('local presets survive reload and apply settings to the current SVG', async ({ page }) => {
+  const openPresets = async () => {
+    await page.locator('#projectSettings > summary').click();
+    await page.getByText('Local presets', { exact: true }).click();
+  };
+  const presetStatus = page.locator('#presetStatus');
+  const name = page.getByRole('textbox', { name: 'Preset name' });
+  const list = page.getByRole('combobox', { name: 'Saved presets' });
+  const apply = page.getByRole('button', { name: 'Apply preset' });
+  await load(page, compound, { width: 50, edge: 'sharp', designOffset: 0.25, mirror: false });
+  await openPresets();
+  await expect(apply).toBeDisabled();
+  await name.fill('  Logo stamp  ');
+  await page.getByRole('button', { name: 'Save preset' }).click();
+  await expect(list).toHaveValue('Logo stamp');
+  await expect(presetStatus).toContainText('Saved');
+  await name.fill('Logo stamp');
+  await page.getByRole('button', { name: 'Save preset' }).click();
+  await expect(presetStatus).toContainText('already exists');
+
+  await page.reload();
+  const nextSvg = artwork('<path d="M0 0H32V16H0Z"/>');
+  await load(page, nextSvg, { edge: 'sharp' });
+  await generate(page);
+  await openPresets();
+  await expect(list).toHaveValue('Logo stamp');
+  await apply.click();
+  await expect(page.locator('#width')).toHaveValue('50');
+  await expect(page.locator('#designOffset')).toHaveValue('0.25');
+  await expect(page.locator('#mirror')).not.toBeChecked();
+  await expect(page.locator('#export')).toBeDisabled();
+  const saved = JSON.parse(await download(page, '#save'));
+  expect(saved.svg).toBe(nextSvg);
+  await generate(page);
+  await page.getByRole('button', { name: 'Delete preset' }).click();
+  await expect(apply).toBeDisabled();
+  await expect(page.locator('#export')).toBeEnabled();
+  await page.reload();
+  await openPresets();
+  await expect(list).toBeDisabled();
+});

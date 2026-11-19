@@ -88,6 +88,9 @@
 #firstStampGuide ol{padding-inline-start:19px;margin:0}
 #firstStampGuide li+li{margin-top:8px}
 #firstStampGuide strong,#firstStampGuide b{color:#d8e2eb}
+#presetName{width:100%;padding:10px;background:#1b2430;border:1px solid #394655;border-radius:8px;color:#f2f4f7;font-size:14px}
+#presetStatus{margin-bottom:0}
+#presetSettings .buttons+.field{margin-top:12px}
 </style>
 <script type="importmap">{"imports":{"three":"https://esm.sh/three@0.180.0","three/addons/":"https://esm.sh/three@0.180.0/examples/jsm/"}}</script>
 <script src="https://cdn.jsdelivr.net/npm/clipper-lib@6.4.2/clipper.js"></script>
@@ -161,6 +164,18 @@
 <details class="advanced-group" id="projectSettings"><summary><span>Projects &amp; technical checks</span><small>Save, load, and validation notes</small></summary><div class="advanced-body">
 <div class="buttons"><button class="secondary" id="save">Save project JSON</button><button class="secondary" id="load">Load project JSON</button><input type="file" id="projectFile" accept=".json,application/json" hidden></div>
 <p class="hint">Projects include SVG artwork and all size and quality settings, stored locally in your downloaded JSON file.</p>
+<details id="presetSettings" class="nested-advanced">
+<summary>Local presets</summary>
+<p class="hint">Presets save settings in this browser. Applying one keeps your current artwork.</p>
+<div class="field"><label for="presetName">Preset name</label><input id="presetName" type="text" maxlength="60"></div>
+<div class="buttons"><button id="savePreset" type="button" class="secondary">Save preset</button></div>
+<div class="field"><label for="presetList">Saved presets</label><select id="presetList" disabled><option value="">No saved presets</option></select></div>
+<div class="buttons">
+<button id="applyPreset" type="button" class="secondary" disabled>Apply preset</button>
+<button id="deletePreset" type="button" class="secondary" disabled>Delete preset</button>
+</div>
+<p class="hint" id="presetStatus" role="status"></p>
+</details>
 <h2>Final checks</h2><p class="hint">V3.1 validates boundary edges, non-manifold edges, inconsistent face orientation and degenerate triangles before enabling STL export. Mesh checks cannot guarantee slicer compatibility or print strength. Import STL into Bambu Studio as millimeters. Recessed dies may require a matching positive die to produce a raised leather impression.</p>
 </div></details>
 </aside><div id="stage"><div id="viewport"></div><div id="designView" hidden>
@@ -385,7 +400,7 @@ for(const [changed,other] of [['artWidth','artHeight'],['artHeight','artWidth']]
 }
 function markDirty(){if($('designView').hidden)showPrintabilityNote();scheduleDesignPreview();if(finalMesh){$('export').disabled=true;status.className='';status.textContent='Settings changed. Generate 3D stamp again before exporting.';progress('Changes pending · Regenerate before export');}}
 for(const el of document.querySelectorAll('aside input, aside select')){
- if(el.type!=='file')el.addEventListener(['number','range'].includes(el.type)?'input':'change',markDirty);
+ if(el.type!=='file'&&!el.closest('#presetSettings'))el.addEventListener(['number','range'].includes(el.type)?'input':'change',markDirty);
 }
 function simplifyPolyline(pts,tol){
  if(pts.length<5||tol<=0)return pts;
@@ -1151,8 +1166,108 @@ $('designOffsetSlider').addEventListener('input',()=>{
 });
 const settingIds=[...Object.keys(defaultPlacement),'designOffset','mode','mirror','width','height','base','depth','margin','curve','tolerance','baseShape','corner','edge','bevel','simplify','artWidth','artHeight','lockAspect'];
 function download(data,name,type){const url=URL.createObjectURL(new Blob([data],{type}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),2500)}
-$('save').onclick=()=>{const settings={};for(const id of settingIds)settings[id]=$(id).type==='checkbox'?$(id).checked:$(id).value;settings.artSizing=$('customArt').checked?'custom':'fit';download(JSON.stringify({format:'LeatherStampStudio',version:2,svg:svgText,settings},null,2),'leather_stamp_project.json','application/json')};
-$('load').onclick=()=>$('projectFile').click();$('projectFile').onchange=async e=>{try{const f=e.target.files?.[0];if(!f)return;const obj=JSON.parse(await f.text());if(obj.format!=='LeatherStampStudio'||typeof obj.svg!=='string'||!obj.settings)throw Error('Not a Leather Stamp Studio project');validateSvg(obj.svg);svgText=obj.svg;refreshAspectFromSVG();$('customArt').checked=obj.settings.artSizing==='custom';$('fitArt').checked=!$('customArt').checked;syncSizingUI();const settings={...defaultPlacement,designOffset:0,...obj.settings};for(const id of settingIds){if(settings[id]!==undefined){if($(id).type==='checkbox')$(id).checked=!!settings[id];else $(id).value=settings[id]}}$('file').value='';fileLabel('Project artwork');$('export').disabled=true;status.className='';syncSimpleUI();$('designOffsetSlider').value=$('designOffset').value;status.textContent='Project loaded. Click Generate 3D stamp.';progress('Project loaded · Generate to preview');scheduleDesignPreview()}catch(err){status.textContent='Project load failed: '+err.message;status.className='bad';progress('Project load failed','error')}finally{e.target.value=''}};
+function currentSettings(){
+ const settings={};
+ for(const id of settingIds)settings[id]=$(id).type==='checkbox'?$(id).checked:$(id).value;
+ settings.artSizing=$('customArt').checked?'custom':'fit';
+ return settings;
+}
+function applySettings(saved){
+ const settings={...defaultPlacement,designOffset:0,...saved};
+ $('customArt').checked=settings.artSizing==='custom';
+ $('fitArt').checked=!$('customArt').checked;
+ for(const id of settingIds){
+   if(settings[id]===undefined)continue;
+   if($(id).type==='checkbox')$(id).checked=!!settings[id];
+   else $(id).value=settings[id];
+ }
+ syncSizingUI();
+ syncSimpleUI();
+ $('designOffsetSlider').value=$('designOffset').value;
+}
+function settingsLoaded(message){
+ $('export').disabled=true;
+ status.className='';
+ status.textContent=message+'. Click Generate 3D stamp.';
+ progress(message+' · Generate to preview');
+ scheduleDesignPreview();
+}
+$('save').onclick=()=>download(
+ JSON.stringify({format:'LeatherStampStudio',version:2,svg:svgText,settings:currentSettings()},null,2),
+ 'leather_stamp_project.json','application/json'
+);
+$('load').onclick=()=>$('projectFile').click();
+$('projectFile').onchange=async e=>{
+ try{
+   const file=e.target.files?.[0];
+   if(!file)return;
+   const obj=JSON.parse(await file.text());
+   if(obj.format!=='LeatherStampStudio'||typeof obj.svg!=='string'||!obj.settings)throw Error('Not a Leather Stamp Studio project');
+   validateSvg(obj.svg);
+   svgText=obj.svg;
+   refreshAspectFromSVG();
+   applySettings(obj.settings);
+   $('file').value='';
+   fileLabel('Project artwork');
+   settingsLoaded('Project loaded');
+ }catch(err){
+   status.textContent='Project load failed: '+err.message;
+   status.className='bad';
+   progress('Project load failed','error');
+ }finally{e.target.value=''}
+};
+
+const presetKey='leatherStampStudio.presets.v1';
+function readPresets(){
+ const presets=JSON.parse(localStorage.getItem(presetKey)??'[]');
+ if(!Array.isArray(presets)||!presets.every(p=>p&&typeof p.name==='string'&&p.name&&p.settings&&typeof p.settings==='object')){
+   throw Error('Saved presets could not be read.');
+ }
+ return presets;
+}
+function showPresets(presets,selection){
+ const list=$('presetList');
+ list.replaceChildren();
+ for(const {name} of presets)list.add(new Option(name,name));
+ if(!presets.length)list.add(new Option('No saved presets',''));
+ else if(presets.some(p=>p.name===selection))list.value=selection;
+ for(const id of ['presetList','applyPreset','deletePreset'])$(id).disabled=!presets.length;
+}
+function withPresets(action){
+ try{action(readPresets())}
+ catch{$('presetStatus').textContent='Browser preset storage is unavailable.'}
+}
+$('savePreset').onclick=()=>withPresets(presets=>{
+ const name=$('presetName').value.trim();
+ if(!name){$('presetStatus').textContent='Enter a preset name.';return}
+ if(presets.some(p=>p.name===name)){
+   $('presetStatus').textContent='That preset name already exists. Choose another name.';
+   return;
+ }
+ const updated=[...presets,{name,settings:currentSettings()}];
+ localStorage.setItem(presetKey,JSON.stringify(updated));
+ showPresets(updated,name);
+ $('presetName').value='';
+ $('presetStatus').textContent=`Saved “${name}” in this browser.`;
+});
+$('applyPreset').onclick=()=>withPresets(presets=>{
+ const preset=presets.find(p=>p.name===$('presetList').value);
+ if(!preset){showPresets(presets);return}
+ applySettings(preset.settings);
+ settingsLoaded('Preset applied');
+ $('presetStatus').textContent=`Applied “${preset.name}” to the current artwork.`;
+});
+$('deletePreset').onclick=()=>withPresets(presets=>{
+ const name=$('presetList').value;
+ const updated=presets.filter(p=>p.name!==name);
+ localStorage.setItem(presetKey,JSON.stringify(updated));
+ showPresets(updated);
+ $('presetStatus').textContent=`Deleted “${name}”.`;
+});
+withPresets(showPresets);
+window.addEventListener('storage',event=>{
+ if(event.key===presetKey||event.key===null)withPresets(presets=>showPresets(presets,$('presetList').value));
+});
 $('build').onclick=()=>{showDesignView(false);setTimeout(build,35)};
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter'&&!e.repeat){e.preventDefault();if(!$('build').disabled)$('build').click()}});
 $('resetView').onclick=()=>{if(!finalMesh){controls.target.set(0,0,5);camera.position.set(75,-85,95);controls.update();return}const bounds=new THREE.Box3().setFromObject(finalMesh),center=bounds.getCenter(new THREE.Vector3()),span=bounds.getSize(new THREE.Vector3()),radius=Math.max(span.x,span.y,span.z,15);controls.target.copy(center);camera.position.copy(center).add(new THREE.Vector3(radius*1.5,-radius*1.7,radius*1.6));controls.update()};
