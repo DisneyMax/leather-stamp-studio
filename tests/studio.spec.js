@@ -147,7 +147,7 @@ test('V3.1 project round-trip and V3.0 project missing the adjustment', async ({
   await load(page, compound, { designOffset: -0.37, edge: 'sharp', artSizing: 'custom', artWidth: 25, artHeight: 24 });
   await expect(page.locator('#designOffsetSlider')).toHaveValue('-0.35');
   await expect(page.locator('#artWidth')).toHaveValue('25');
-  await page.locator('#projectSettings summary').click();
+  await page.locator('#projectSettings > summary').click();
   const saved = JSON.parse(await download(page, '#save'));
   expect(saved).toMatchObject({
     format: 'LeatherStampStudio', version: 2, svg: compound,
@@ -187,17 +187,49 @@ test('offsets can close a small hole or remove a narrow island', async ({ page }
     '<path fill-rule="evenodd" d="M0 0H32V32H0Z M15.5 15.5H16.3V16.3H15.5Z M15.7 15.7H16V16Z"/>',
   );
   await load(page, detailed, { edge: 'sharp', mirror: false, designOffset: 0.5 });
+  await page.getByRole('button', { name: '2D design' }).click();
+  const note = page.locator('#printabilityNote');
+  await expect(note).toContainText('1 fewer hole and 1 fewer filled region');
+  const toggle = page.getByRole('checkbox', { name: 'Show thickness changes' });
+  const added = page.locator('#changeAdded');
+  const removed = page.locator('#changeRemoved');
+  const covers = (path, x, y) => path.evaluate((element, point) =>
+    element.isPointInFill(new DOMPoint(...point)), [x, y]);
+  await expect(added).toHaveAttribute('d', '');
+  await toggle.check();
+  await expect(added).toHaveAttribute('d', /^M/);
+  expect(await covers(added, 0.2, 0.2)).toBe(true);
+  expect(await covers(added, 2, 2)).toBe(false);
+  await expect(removed).toHaveAttribute('d', '');
   await generate(page);
+  await expect(note).toContainText('1 fewer hole');
+  await expect(page.locator('#export')).toBeEnabled();
   const thick = parseSTL(await download(page, '#export'));
   expect(surfaceHeight(thick, 0.2, 0.2)).toBe(7.5);
   expectClosedMesh(thick);
   await page.locator('#advancedSettings > summary').click();
+  await page.getByRole('button', { name: '2D design' }).click();
   await page.locator('#designOffset').fill('-0.5');
+  await expect(removed).toHaveAttribute('d', /^M/);
+  expect(await covers(removed, -0.15, -0.15)).toBe(true);
+  expect(await covers(removed, 2, 2)).toBe(false);
+  await expect(added).toHaveAttribute('d', '');
   await generate(page);
+  await expect(note).toContainText('1 fewer filled region');
+  await expect(note).not.toContainText('fewer hole');
   const thin = parseSTL(await download(page, '#export'));
   expect(surfaceHeight(thin, -0.15, 0.15)).toBe(6);
   expect(surfaceHeight(thin, 2, 2)).toBe(7.5);
   expectClosedMesh(thin);
+  await page.getByRole('button', { name: '2D design' }).click();
+  await page.locator('#designOffset').fill('0');
+  await expect(note).toBeHidden();
+  await expect(page.locator('#noChanges')).toBeVisible();
+  await expect(added).toHaveAttribute('d', '');
+  await expect(removed).toHaveAttribute('d', '');
+  await toggle.uncheck();
+  await expect(page.locator('#noChanges')).toBeHidden();
+  await expect(page.locator('#designArt')).toHaveAttribute('d', /^M/);
 });
 
 for (const edge of ['chamfer', 'round']) {
@@ -212,6 +244,12 @@ for (const edge of ['chamfer', 'round']) {
 }
 
 test('recommended settings generate the included paw print', async ({ page }) => {
+  const guide = page.locator('#firstStampGuide');
+  await expect(guide.locator('ol')).toBeHidden();
+  await page.getByText('First stamp guide', { exact: true }).click();
+  await expect(guide.locator('ol')).toBeVisible();
+  await expect(guide).toContainText('Bambu Studio');
+  await page.getByRole('button', { name: 'Use example paw print' }).click();
   await generate(page);
   expectClosedMesh(parseSTL(await download(page, '#export')));
 });
@@ -531,4 +569,78 @@ test('view cube switches the 3D camera and is hidden in 2D', async ({ page }) =>
   await expect(page.locator('#export')).toBeEnabled();
   await page.getByRole('button', { name: '2D design' }).click();
   await expect(shortcuts).toBeHidden();
+});
+
+test('minimum feature check highlights thin artwork and small holes without changing export', async ({ page }) => {
+  const svg = artwork('<path fill-rule="evenodd" d="M0 0H20V20H0Z M9.9 9.9H10.1V10.1H9.9Z M24 5H24.2V15H24Z"/>');
+  await load(page, svg, { edge: 'sharp', mirror: false, artSizing: 'custom', artWidth: 24.2, artHeight: 20 });
+  await page.getByRole('button', { name: '2D design' }).click();
+  const toggle = page.getByRole('checkbox', { name: 'Check small features' });
+  const narrow = page.locator('#narrowFeatures');
+  const gaps = page.locator('#smallGaps');
+  const note = page.locator('#featureStatus');
+  const covers = (path, x, y) => path.evaluate((element, point) =>
+    element.isPointInFill(new DOMPoint(...point)), [x, y]);
+  await expect(narrow).toHaveAttribute('d', '');
+  await toggle.check();
+  await expect(note).toContainText('Estimated trouble spots');
+  expect(await covers(narrow, 12, 0)).toBe(true);
+  expect(await covers(narrow, -6, 0)).toBe(false);
+  expect(await covers(gaps, -2.1, 0)).toBe(true);
+
+  const minimum = page.getByRole('spinbutton', { name: 'Minimum feature (mm)' });
+  await minimum.fill('0.10');
+  await expect(note).toContainText('No small features flagged');
+  await expect(narrow).toHaveAttribute('d', '');
+  await expect(gaps).toHaveAttribute('d', '');
+  await minimum.fill('');
+  await expect(note).toContainText('from 0.05 to 5 mm');
+  await minimum.fill('0.4');
+  await generate(page);
+  const triangles = parseSTL(await download(page, '#export'));
+  expectClosedMesh(triangles);
+  expect(surfaceHeight(triangles, 12, 0)).toBe(7.5);
+  expect(surfaceHeight(triangles, -2.1, 0)).toBe(6);
+});
+
+test('local presets survive reload and apply settings to the current SVG', async ({ page }) => {
+  const openPresets = async () => {
+    await page.locator('#projectSettings > summary').click();
+    await page.getByText('Local presets', { exact: true }).click();
+  };
+  const presetStatus = page.locator('#presetStatus');
+  const name = page.getByRole('textbox', { name: 'Preset name' });
+  const list = page.getByRole('combobox', { name: 'Saved presets' });
+  const apply = page.getByRole('button', { name: 'Apply preset' });
+  await load(page, compound, { width: 50, edge: 'sharp', designOffset: 0.25, mirror: false });
+  await openPresets();
+  await expect(apply).toBeDisabled();
+  await name.fill('  Logo stamp  ');
+  await page.getByRole('button', { name: 'Save preset' }).click();
+  await expect(list).toHaveValue('Logo stamp');
+  await expect(presetStatus).toContainText('Saved');
+  await name.fill('Logo stamp');
+  await page.getByRole('button', { name: 'Save preset' }).click();
+  await expect(presetStatus).toContainText('already exists');
+
+  await page.reload();
+  const nextSvg = artwork('<path d="M0 0H32V16H0Z"/>');
+  await load(page, nextSvg, { edge: 'sharp' });
+  await generate(page);
+  await openPresets();
+  await expect(list).toHaveValue('Logo stamp');
+  await apply.click();
+  await expect(page.locator('#width')).toHaveValue('50');
+  await expect(page.locator('#designOffset')).toHaveValue('0.25');
+  await expect(page.locator('#mirror')).not.toBeChecked();
+  await expect(page.locator('#export')).toBeDisabled();
+  const saved = JSON.parse(await download(page, '#save'));
+  expect(saved.svg).toBe(nextSvg);
+  await generate(page);
+  await page.getByRole('button', { name: 'Delete preset' }).click();
+  await expect(apply).toBeDisabled();
+  await expect(page.locator('#export')).toBeEnabled();
+  await page.reload();
+  await openPresets();
+  await expect(list).toBeDisabled();
 });
