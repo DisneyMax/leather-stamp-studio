@@ -259,7 +259,8 @@ function fileLabel(name){$('artworkName').textContent=name?`Loaded: ${name}`:'Us
 function showLoadError(error){status.textContent='Could not load SVG: '+error.message;status.className='bad';$('export').disabled=true;progress('SVG load failed · Check the file','error');}
 
 const sample="<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<svg id=\"Layer_1\" data-name=\"Layer 1\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 788.67 741.6\">\n  <path d=\"M385.61,303.29c90.16-6.95,119.56,74.62,167.01,130.25,32.08,37.62,75.89,66.2,99.76,110.36,59.06,109.23-23.17,224.62-145.7,192-46.75-12.45-74.77-32.92-127.41-29.39-36.32,2.44-70.22,23.51-105.23,31.29-115.91,25.75-193.26-83.78-141.26-187.56,21.76-43.42,60.6-69.09,92.23-103.64,48.92-53.45,77-136.86,160.6-143.3Z\"/>\n  <path d=\"M245.53.57c120.87-13.01,174.39,198.98,76.58,258.21-68.82,41.67-132.65-33.43-149.34-94.74-15.86-58.26-1.39-155.49,72.76-163.47Z\"/>\n  <path d=\"M520.94.57c90.1-9.2,114.51,95.52,94.88,164.92-17.28,61.08-83.19,135.55-151.05,92.37C375.97,201.36,417.52,11.13,520.94.57Z\"/>\n  <path d=\"M68.65,198.82c95.67-9.54,167.1,137.13,105.93,209.21-54.79,64.56-137.52.65-162.87-59.18-23.21-54.76-15.66-142.78,56.94-150.03Z\"/>\n  <path d=\"M702.57,198.83c77.08-7.02,98.02,72.26,80.09,133.51-17.63,60.22-93.81,135-156.89,87.41-76.63-57.82-15.65-212.5,76.8-220.92Z\"/>\n</svg>";
-let svgText=sample, finalMesh=null, scene, camera, renderer, controls, modelGroup;
+const sampleFilename='paw_print.svg';
+let svgText=sample, artworkFilename=sampleFilename, finalMesh=null, scene, camera, renderer, controls, modelGroup;
 try{
 scene=new THREE.Scene();scene.background=new THREE.Color('#151e28');
 camera=new THREE.PerspectiveCamera(40,1,.1,2000);camera.position.set(75,-85,95);camera.up.set(0,0,1);
@@ -277,14 +278,14 @@ async function acceptSVG(file){
  try{
   if(!/\.svg$/i.test(file.name)&&file.type!=='image/svg+xml')throw Error('Choose an SVG (.svg) vector file.');
   const txt=await file.text();validateSvg(txt); // reject invalid files before replacing the current artwork
-  svgText=txt;fileLabel(file.name);status.textContent=`Loaded ${file.name}. Click Generate 3D stamp.`;
+  svgText=txt;artworkFilename=file.name;fileLabel(file.name);status.textContent=`Loaded ${file.name}. Click Generate 3D stamp.`;
   status.className='';$('export').disabled=true;progress('Artwork loaded · Generate to preview');
   refreshAspectFromSVG();if($('customArt').checked)setCustomFromFit();
   showDesignView(true);
  }catch(e){showLoadError(e)}
 }
 $('file').addEventListener('change',e=>acceptSVG(e.target.files?.[0]));
-$('demo').onclick=()=>{svgText=sample;$('file').value='';fileLabel(null);status.textContent='Paw print loaded. Click Generate 3D stamp.';status.className='';$('export').disabled=true;progress('Sample artwork ready · Generate to preview');refreshAspectFromSVG();if($('customArt').checked)setCustomFromFit();scheduleDesignPreview()};
+$('demo').onclick=()=>{svgText=sample;artworkFilename=sampleFilename;$('file').value='';fileLabel(null);status.textContent='Paw print loaded. Click Generate 3D stamp.';status.className='';$('export').disabled=true;progress('Sample artwork ready · Generate to preview');refreshAspectFromSVG();if($('customArt').checked)setCustomFromFit();scheduleDesignPreview()};
 const dz=$('dropzone');dz.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();$('file').click()}});
 for(const eventName of ['dragenter','dragover'])dz.addEventListener(eventName,e=>{e.preventDefault();dz.classList.add('dragging')});
 for(const eventName of ['dragleave','drop'])dz.addEventListener(eventName,e=>{e.preventDefault();dz.classList.remove('dragging')});
@@ -1289,7 +1290,7 @@ function settingsLoaded(message){
  scheduleDesignPreview();
 }
 $('save').onclick=()=>download(
- JSON.stringify({format:'LeatherStampStudio',version:2,svg:svgText,settings:currentSettings()},null,2),
+ JSON.stringify({format:'LeatherStampStudio',version:2,svg:svgText,artworkFilename,settings:currentSettings()},null,2),
  'leather_stamp_project.json','application/json'
 );
 $('load').onclick=()=>$('projectFile').click();
@@ -1301,10 +1302,11 @@ $('projectFile').onchange=async e=>{
    if(obj.format!=='LeatherStampStudio'||typeof obj.svg!=='string'||!obj.settings)throw Error('Not a Leather Stamp Studio project');
    validateSvg(obj.svg);
    svgText=obj.svg;
+   artworkFilename=typeof obj.artworkFilename==='string'?obj.artworkFilename:'';
    refreshAspectFromSVG();
    applySettings(obj.settings);
    $('file').value='';
-   fileLabel('Project artwork');
+   fileLabel(artworkFilename||'Project artwork');
    if($('borderEnabled').checked)$('borderPanel').open=true;
    settingsLoaded('Project loaded');
  }catch(err){
@@ -1368,5 +1370,17 @@ window.addEventListener('storage',event=>{
 $('build').onclick=()=>{showDesignView(false);setTimeout(build,35)};
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter'&&!e.repeat){e.preventDefault();if(!$('build').disabled)$('build').click()}});
 $('resetView').onclick=()=>{if(!finalMesh){controls.target.set(0,0,5);camera.position.set(75,-85,95);controls.update();return}const bounds=new THREE.Box3().setFromObject(finalMesh),center=bounds.getCenter(new THREE.Vector3()),span=bounds.getSize(new THREE.Vector3()),radius=Math.max(span.x,span.y,span.z,15);controls.target.copy(center);camera.position.copy(center).add(new THREE.Vector3(radius*1.5,-radius*1.7,radius*1.6));controls.update()};
-$('export').onclick=()=>{if(!finalMesh||$('export').disabled)return;try{const exporter=new STLExporter();const output=exporter.parse(finalMesh,{binary:true});download(output,`leather_stamp_v3_2_${$('mode').value}_${$('baseShape').value}.stl`,'model/stl')}catch(e){status.textContent='STL export failed: '+e.message;status.className='bad'}};
+function stlFilename(){
+ const source=artworkFilename.split(/[\\/]/).pop().replace(/\.svg$/i,'');
+ const stem=source.replace(/[<>:"|?*\s\x00-\x1f\x7f]+/g,'_').replace(/^[._]+|[._]+$/g,'');
+ const raised=$('mode').value==='raised';
+ const impression=raised?'debossing':'embossing';
+ const edges={sharp:'sharp',chamfer:'chamfered',round:'rounded'};
+ const edge=raised?edges[$('edge').value]:'sharp';
+ const bases={rect:'rectangle',roundrect:'rounded_rectangle',circle:'ellipse',contour:'svg_contour'};
+ const shape=bases[$('baseShape').value];
+ const artworkName=[...stem].slice(0,50).join('')||'project_artwork';
+ return `${artworkName}_${impression}_${edge}_${shape}.stl`;
+}
+$('export').onclick=()=>{if(!finalMesh||$('export').disabled)return;try{const exporter=new STLExporter();const output=exporter.parse(finalMesh,{binary:true});download(output,stlFilename(),'model/stl')}catch(e){status.textContent='STL export failed: '+e.message;status.className='bad'}};
 </script></body></html>

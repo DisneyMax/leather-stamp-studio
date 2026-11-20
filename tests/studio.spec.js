@@ -797,3 +797,38 @@ test('a stale polygon library blocks bordered export with a reload message', asy
   await expect(page.locator('#status')).toContainText('The border library is out of date. Reload the page');
   await expect(page.locator('#export')).toBeDisabled();
 });
+
+test('STL filenames use the SVG name and effective stamp settings', async ({ page }) => {
+  async function expectDownloadName(expected) {
+    const event = page.waitForEvent('download');
+    await page.locator('#export').click();
+    expect((await event).suggestedFilename()).toBe(expected);
+  }
+
+  await page.locator('#file').setInputFiles({
+    name: 'Dacha Craft.svg', mimeType: 'image/svg+xml', buffer: Buffer.from(smallBorderArt),
+  });
+  await expect(page.locator('#readyState')).toContainText('Artwork loaded');
+  await page.locator('#baseShape').selectOption('roundrect');
+  await page.locator('#edge').selectOption('round');
+  await generate(page);
+  await expectDownloadName('Dacha_Craft_debossing_rounded_rounded_rectangle.stl');
+
+  await page.locator('#projectSettings > summary').click();
+  const saved = JSON.parse(await download(page, '#save'));
+  expect(saved.artworkFilename).toBe('Dacha Craft.svg');
+  await page.locator('#projectFile').setInputFiles({
+    name: 'Renamed project.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(saved)),
+  });
+  await expect(page.locator('#readyState')).toContainText('Project loaded');
+  await page.locator('#mode').selectOption('recessed');
+  await generate(page);
+  await expectDownloadName('Dacha_Craft_embossing_sharp_rounded_rectangle.stl');
+
+  await load(page, smallBorderArt, { edge: 'sharp', mode: 'raised', baseShape: 'rect' });
+  await generate(page);
+  await expectDownloadName('project_artwork_debossing_sharp_rectangle.stl');
+  await page.getByRole('button', { name: 'Use example paw print' }).click();
+  await generate(page);
+  await expectDownloadName('paw_print_debossing_sharp_rectangle.stl');
+});
