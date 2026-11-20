@@ -26,7 +26,7 @@ Open **Add border** and enable **Add a printable border**. The green ring in **2
 - **Fit around artwork** uses the placed artwork after sizing, mirroring, and thickness adjustment. **Gap from artwork** measures to the inside of the ring. Choose a rectangle, rounded rectangle, ellipse, or SVG contour. Rounded rectangles and ellipses may use extra clearance at corners.
 - **SVG contour** follows the artwork's outer silhouette. Separate shapes may have separate rings, and letter counters receive no rings.
 
-Borders are available for **Debossing (raised stamp)**. They use sharp edges and default to artwork height. Choose **Add border → Border height → Custom height** to set the border relief independently. For a zero artwork gap, choose **Sharp** artwork edges and use the same height for both so touching relief can join. If the ring overruns the plate or collapses, reduce the gap or thickness, adjust the artwork, or enlarge the base.
+Borders are available for **Debossing (raised stamp)**. They default to Sharp and the artwork height. Under **Add border**, select **Chamfered** or **Rounded** to give the border its own edge profile. After generation, the status shows the applied edge size, including any reduction needed for a valid mesh. Choose **Add border → Border height → Custom height** to set the border relief independently. For a zero artwork gap, choose **Sharp** edges for both the artwork and border and use the same height so touching relief can join. If the ring overruns the plate or collapses, reduce the gap or thickness, adjust the artwork, or enlarge the base.
 
 ## Validation
 
@@ -44,7 +44,7 @@ For each manual test, record the artwork, project settings, edge profile and app
 
 ## Development
 
-GitHub Pages currently publishes the root of `feature/stamp-border`. Stamp borders are merged into `main`. Use a feature branch and pull request for changes. [Stamp border PR](https://github.com/DisneyMax/leather-stamp-studio/pull/8)
+GitHub Pages publishes the root of `main`. Each deployment displays its commit SHA (shortened to seven characters) in the footer. This also works when Pages publishes a feature branch for a pull request preview. Use a feature branch and pull request for changes.
 
 - [Implemented features](docs/IMPLEMENTED_FEATURES.md) for the current app capabilities.
 - [Feature plan](docs/FEATURE_PLAN.md) for upcoming priorities and acceptance criteria.
