@@ -26,7 +26,7 @@ Open **Add border** and enable **Add a printable border**. The green ring in **2
 - **Fit around artwork** uses the placed artwork after sizing, mirroring, and thickness adjustment. **Gap from artwork** measures to the inside of the ring. Choose a rectangle, rounded rectangle, ellipse, or SVG contour. Rounded rectangles and ellipses may use extra clearance at corners.
 - **SVG contour** follows the artwork's outer silhouette. Separate shapes may have separate rings, and letter counters receive no rings.
 
-Borders are available for **Debossing (raised stamp)**. They use sharp edges at artwork height. For a zero artwork gap, choose **Sharp** artwork edges so touching relief can join. If the ring overruns the plate or collapses, reduce the gap or thickness, adjust the artwork, or enlarge the base.
+Borders are available for **Debossing (raised stamp)**. They use sharp edges and default to artwork height. Choose **Advanced settings → Border height → Custom height** to set the border relief independently. For a zero artwork gap, choose **Sharp** artwork edges and use the same height for both so touching relief can join. If the ring overruns the plate or collapses, reduce the gap or thickness, adjust the artwork, or enlarge the base.
 
 ## Validation
 

@@ -834,3 +834,63 @@ test('STL filenames use the SVG name and effective stamp settings', async ({ pag
   await generate(page);
   await expectDownloadName('paw_print_debossing_sharp_rectangle.stl');
 });
+
+test('custom border height updates the preview and STL while preserving artwork relief', async ({ page }) => {
+  await load(page, smallBorderArt, { ...borderSettings, borderShape: 'rect', edge: 'chamfer' });
+  await page.getByRole('button', { name: '2D design' }).click();
+  await page.locator('#advancedSettings > summary').click();
+  const mode = page.getByRole('combobox', { name: 'Border height', exact: true });
+  const height = page.getByRole('spinbutton', { name: 'Custom border height (mm)' });
+  await expect(mode).toHaveValue('same');
+  await expect(height).toBeHidden();
+  const border = page.locator('#borderPreview');
+  await expect(border).toHaveAttribute('d', /^M/);
+  const footprint = await border.getAttribute('d');
+  await expect(page.locator('#designStatus')).toContainText('1.5 mm high');
+
+  await mode.selectOption('custom');
+  await height.fill('2.25');
+  await expect(page.locator('#designStatus')).toContainText('2.25 mm high');
+  await expect(border).toHaveAttribute('d', footprint);
+  await generate(page);
+  const geometry = parseSTL(await download(page, '#export'));
+  expectClosedMesh(geometry);
+  expect(surfaceHeight(geometry, 0, 0)).toBe(7.5);
+  expect(surfaceHeight(geometry, 15, 0)).toBe(8.25);
+  expect(surfaceHeight(geometry, 14, 0)).toBe(6);
+
+  await page.locator('#projectSettings > summary').click();
+  const project = JSON.parse(await download(page, '#save'));
+  expect(project.settings).toMatchObject({ borderHeightMode: 'custom', borderHeight: '2.25' });
+  await height.fill('0.1');
+  await expect(page.locator('#export')).toBeDisabled();
+  await page.locator('#build').click();
+  await expect(page.locator('#status')).toContainText('custom border height from 0.20 to 5.00 mm');
+  await expect(page.locator('#export')).toBeDisabled();
+
+  await load(page, project.svg, project.settings);
+  await generate(page);
+  expect(parseSTL(await download(page, '#export'))).toEqual(geometry);
+});
+
+test('a shorter sharp border stays distinct, and touching relief requires equal heights', async ({ page }) => {
+  await load(page, smallBorderArt, {
+    ...borderSettings, borderShape: 'rect', borderHeightMode: 'custom', borderHeight: 0.75,
+  });
+  await generate(page);
+  const mesh = parseSTL(await download(page, '#export'));
+  expectClosedMesh(mesh);
+  expect(surfaceHeight(mesh, 0, 0)).toBe(7.5);
+  expect(surfaceHeight(mesh, 15, 0)).toBe(6.75);
+
+  await page.locator('#borderGap').fill('0');
+  await page.locator('#build').click();
+  await expect(page.locator('#status')).toContainText('zero artwork gap requires the border and artwork to have the same height');
+  await expect(page.locator('#export')).toBeDisabled();
+
+  await load(page, smallBorderArt, { ...borderSettings, borderShape: 'rect', borderGap: 0 });
+  await generate(page);
+  const legacy = parseSTL(await download(page, '#export'));
+  expectClosedMesh(legacy);
+  expect(surfaceHeight(legacy, 13, 0)).toBe(7.5);
+});
