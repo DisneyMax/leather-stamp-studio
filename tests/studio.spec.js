@@ -243,7 +243,7 @@ test('offsets can close a small hole or remove a narrow island', async ({ page }
     '<path fill-rule="evenodd" d="M0 0H32V32H0Z M15.5 15.5H16.3V16.3H15.5Z M15.7 15.7H16V16Z"/>',
   );
   await load(page, detailed, { edge: 'sharp', mirror: false, designOffset: 0.5 });
-  await page.getByRole('button', { name: '2D design' }).click();
+  await page.getByRole('button', { name: '2D Design' }).click();
   const note = page.locator('#printabilityNote');
   await expect(note).toContainText('1 fewer hole and 1 fewer filled region');
   const toggle = page.getByRole('checkbox', { name: 'Show thickness changes' });
@@ -264,7 +264,7 @@ test('offsets can close a small hole or remove a narrow island', async ({ page }
   expect(surfaceHeight(thick, 0.2, 0.2)).toBe(7.5);
   expectClosedMesh(thick);
   await page.locator('#advancedSettings > summary').click();
-  await page.getByRole('button', { name: '2D design' }).click();
+  await page.getByRole('button', { name: '2D Design' }).click();
   await page.locator('#designOffset').fill('-0.5');
   await expect(removed).toHaveAttribute('d', /^M/);
   expect(await covers(removed, -0.15, -0.15)).toBe(true);
@@ -277,7 +277,7 @@ test('offsets can close a small hole or remove a narrow island', async ({ page }
   expect(surfaceHeight(thin, -0.15, 0.15)).toBe(6);
   expect(surfaceHeight(thin, 2, 2)).toBe(7.5);
   expectClosedMesh(thin);
-  await page.getByRole('button', { name: '2D design' }).click();
+  await page.getByRole('button', { name: '2D Design' }).click();
   await page.locator('#designOffset').fill('0');
   await expect(note).toBeHidden();
   await expect(page.locator('#noChanges')).toBeVisible();
@@ -357,7 +357,7 @@ test('nonzero fill rules and mirroring preserve off-center islands and counters'
 test('live 2D design matches exported footprints for mirrored artwork with holes and an island', async ({ page }) => {
   const asymmetric = artwork('<path fill-rule="evenodd" d="M0 0H32V32H0Z M2 2H20V26H2Z M5 5H14V16H5Z"/>');
   await load(page, asymmetric, { edge: 'sharp', mirror: false, designOffset: 0 });
-  await page.getByRole('button', { name: '2D design' }).click();
+  await page.getByRole('button', { name: '2D Design' }).click();
   const outline = page.locator('#designArt');
   await expect(outline).toHaveAttribute('d', /^M/);
   await expect(page.locator('#designPlate')).toHaveAttribute('d', /^M/);
@@ -382,17 +382,17 @@ test('live 2D design matches exported footprints for mirrored artwork with holes
     expect(filled).toContain(false);
 
     await generate(page);
-    await expect(page.getByRole('button', { name: '2D design' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '2D Design' })).toBeVisible();
     const triangles = parseSTL(await download(page, '#export'));
     const mismatches = points.filter(([x, y], i) => (surfaceHeight(triangles, x, y) === 7.5) !== filled[i]);
     expect(mismatches).toEqual([]);
-    await page.getByRole('button', { name: '2D design' }).click();
+    await page.getByRole('button', { name: '2D Design' }).click();
     await expect(outline).toHaveAttribute('d', /^M/);
   }
 });
 
 test('invalid 2D inputs clear stale contours and recover without generating a mesh', async ({ page }) => {
-  await page.getByRole('button', { name: '2D design' }).click();
+  await page.getByRole('button', { name: '2D Design' }).click();
   await expect(page.locator('#designArt')).toHaveAttribute('d', /^M/);
   await page.locator('#advancedSettings > summary').click();
   await page.locator('#designOffset').fill('0.6');
@@ -405,7 +405,7 @@ test('invalid 2D inputs clear stale contours and recover without generating a me
 
 test('Exact size keeps the 2D preview visible while editing dimensions', async ({ page }) => {
   await load(page, artwork('<path d="M0 0H40V32.001H0Z"/>'), { edge: 'sharp', height: 33.6008 });
-  await page.getByRole('button', { name: '2D design' }).click();
+  await page.getByRole('button', { name: '2D Design' }).click();
   const design = page.locator('#designArt');
   await expect(design).toHaveAttribute('d', /^M/);
 
@@ -430,7 +430,7 @@ test('Exact size keeps the 2D preview visible while editing dimensions', async (
 
 test('Exact size grows the base to preserve the artwork margin and exports the larger plate', async ({ page }) => {
   await load(page, artwork('<path d="M0 0H1165V1000H0Z"/>'), { edge: 'sharp', margin: 6 });
-  await page.getByRole('button', { name: '2D design' }).click();
+  await page.getByRole('button', { name: '2D Design' }).click();
   await page.locator('#customArt').check();
   await page.locator('#artHeight').fill('30');
   await expect(page.locator('#artWidth')).toHaveValue('34.950');
@@ -455,7 +455,7 @@ test('Exact size grows the base to preserve the artwork margin and exports the l
 
 test('ellipse bases grow enough to preserve clearance at artwork corners', async ({ page }) => {
   await load(page, compound, { edge: 'sharp', baseShape: 'circle' });
-  await page.getByRole('button', { name: '2D design' }).click();
+  await page.getByRole('button', { name: '2D Design' }).click();
   await page.locator('#customArt').check();
   await page.locator('#artWidth').fill('34');
   await expect(page.locator('#width')).toHaveValue('57');
@@ -487,12 +487,15 @@ test.describe('desktop preview layout on a high-density screen', () => {
     await page.locator('#advancedSettings > summary').click();
     await page.locator('#resetDefaults').scrollIntoViewIfNeeded();
     expect(await sidebar.evaluate(element => element.scrollTop)).toBeGreaterThan(0);
+    for (const id of ['build', 'export', 'save', 'load']) {
+      await expect(page.locator('#' + id)).toBeInViewport({ ratio: 1 });
+    }
     await expectPageFits();
 
-    await page.getByRole('button', { name: '2D design' }).click();
+    await page.getByRole('button', { name: '2D Design' }).click();
     await expect(page.locator('#designArt')).toHaveAttribute('d', /^M/);
     await expectPageFits();
-    await page.getByRole('button', { name: '3D preview' }).click();
+    await page.getByRole('button', { name: '3D Preview' }).click();
     await page.setViewportSize({ width: 1024, height: 600 });
     await expect.poll(async () => (await canvas.boundingBox()).width).toBe(674);
     await expect(canvas).toHaveAttribute('width', '1348');
@@ -508,7 +511,7 @@ test('narrow screens can scroll down to the preview without horizontal overflow'
   }));
   expect(root.scrollWidth).toBe(390);
   expect(root.scrollHeight).toBeGreaterThan(650);
-  await page.getByRole('button', { name: '2D design' }).click();
+  await page.getByRole('button', { name: '2D Design' }).click();
   await expect(page.locator('#designArt')).toHaveAttribute('d', /^M/);
 });
 
@@ -516,9 +519,8 @@ test('numeric artwork placement updates the 2D view, STL, and saved project', as
   const svg = artwork('<path d="M0 0H12V2H4V6H0Z"/>');
   await load(page, svg, { edge: 'sharp', artSizing: 'custom', artWidth: 12, artHeight: 6, mirror: false });
   await expect(page.locator('#mode option')).toHaveText(['Debossing (raised stamp)', 'Embossing (recessed die)']);
-  await page.getByRole('button', { name: '2D design' }).click();
-  await page.locator('#advancedSettings > summary').click();
-  await page.locator('#advancedSettings #artPlacement > summary').click();
+  await page.getByRole('button', { name: '2D Design' }).click();
+  await page.locator('#artPlacement > summary').click();
   const design = page.locator('#designArt');
   await expect(design).toHaveAttribute('d', /^M/);
   const original = await design.getAttribute('d');
@@ -538,7 +540,7 @@ test('numeric artwork placement updates the 2D view, STL, and saved project', as
   expect(surfaceHeight(triangles, 7, 7)).toBe(7.5);
   expect(surfaceHeight(triangles, 3, -1)).toBe(6);
 
-  await page.getByRole('button', { name: '2D design' }).click();
+  await page.getByRole('button', { name: '2D Design' }).click();
   const saved = JSON.parse(await download(page, '#save'));
   expect(saved.settings).toMatchObject({ artX: '5', artY: '3', artRotation: '90' });
   await page.getByRole('button', { name: 'Center artwork' }).click();
@@ -575,12 +577,64 @@ test('loading an SVG opens 2D, and generating the stamp switches back to 3D', as
   await expect(page.locator('#export')).toBeEnabled();
 });
 
+test('preview buttons work by keyboard and keep the previous camera view', async ({ page }) => {
+  const nav = page.getByRole('group', { name: 'Preview view' });
+  const design = nav.getByRole('button', { name: '2D Design' });
+  const preview = nav.getByRole('button', { name: '3D Preview' });
+  await expect(preview).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#previewMessage')).toHaveText('Generate a stamp to see it here.');
+  await expect(page.getByRole('button', { name: 'Fit view' })).toBeHidden();
+
+  await generate(page);
+  await page.getByRole('button', { name: 'Top', exact: true }).press('Enter');
+  const canvas = page.locator('#viewport canvas');
+  const { x, y, width, height } = await canvas.boundingBox();
+  const clip = { x: Math.floor(x + width / 4), y: Math.floor(y + height / 4),
+    width: Math.floor(width / 2), height: Math.floor(height / 2) };
+  const topView = await page.screenshot({ clip });
+  await design.focus();
+  await page.keyboard.press('Enter');
+  await expect(design).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#artPlacement > summary')).toBeVisible();
+  await page.locator('#artPlacement > summary').click();
+  await page.locator('#artRotation').fill('20');
+  await expect(page.locator('#export')).toBeDisabled();
+  await preview.focus();
+  await page.keyboard.press('Space');
+  await expect(preview).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#previewMessage')).toContainText('Showing the previous stamp');
+  await expect.poll(async () => (await page.screenshot({ clip })).equals(topView)).toBe(true);
+  await design.click();
+  await expect(page.locator('#artRotation')).toHaveValue('20');
+  await generate(page);
+});
+
+test.describe('touch preview controls', () => {
+  test.use({ viewport: { width: 320, height: 650 }, hasTouch: true, isMobile: true });
+
+  test('keeps the preview and placement controls usable on a narrow screen', async ({ page }) => {
+    const nav = page.getByRole('group', { name: 'Preview view' });
+    await nav.getByRole('button', { name: '2D Design' }).tap();
+    const placement = page.locator('#artPlacement');
+    await placement.locator('summary').tap();
+    await expect(page.locator('#artRotation')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Center artwork' })).toBeVisible();
+    const { viewport, documentWidth } = await page.evaluate(() => ({
+      viewport: window.innerWidth,
+      documentWidth: document.documentElement.scrollWidth,
+    }));
+    expect(viewport).toBe(320);
+    expect(documentWidth).toBe(viewport);
+    await nav.getByRole('button', { name: '3D Preview' }).tap();
+    await expect(placement).toBeHidden();
+  });
+});
+
 test('dragging snaps to center, updates numeric offsets and saves the exported placement', async ({ page }) => {
   const svg = artwork('<path d="M0 0H12V6H0Z"/>');
   await load(page, svg, { edge: 'sharp', artSizing: 'custom', artWidth: 12, artHeight: 6 });
-  await page.getByRole('button', { name: '2D design' }).click();
-  await page.locator('#advancedSettings > summary').click();
-  await page.locator('#advancedSettings #artPlacement > summary').click();
+  await page.getByRole('button', { name: '2D Design' }).click();
+  await page.locator('#artPlacement > summary').click();
   const design = page.locator('#designArt');
   await expect(design).toHaveAttribute('d', /^M/);
   const start = await page.locator('#designCanvas').evaluate(canvas => {
@@ -621,14 +675,14 @@ test('view cube switches the 3D camera and is hidden in 2D', async ({ page }) =>
   await shortcuts.getByRole('button', { name: 'Right', exact: true }).press('Enter');
   await shortcuts.getByRole('button', { name: 'Isometric' }).click();
   await expect(page.locator('#export')).toBeEnabled();
-  await page.getByRole('button', { name: '2D design' }).click();
+  await page.getByRole('button', { name: '2D Design' }).click();
   await expect(shortcuts).toBeHidden();
 });
 
 test('minimum feature check highlights thin artwork and small holes without changing export', async ({ page }) => {
   const svg = artwork('<path fill-rule="evenodd" d="M0 0H20V20H0Z M9.9 9.9H10.1V10.1H9.9Z M24 5H24.2V15H24Z"/>');
   await load(page, svg, { edge: 'sharp', mirror: false, artSizing: 'custom', artWidth: 24.2, artHeight: 20 });
-  await page.getByRole('button', { name: '2D design' }).click();
+  await page.getByRole('button', { name: '2D Design' }).click();
   const toggle = page.getByRole('checkbox', { name: 'Check small features' });
   const narrow = page.locator('#narrowFeatures');
   const gaps = page.locator('#smallGaps');
@@ -711,7 +765,7 @@ for (const baseShape of ['rect', 'roundrect', 'circle', 'contour']) {
       ...borderSettings, artWidth: 18, artHeight: 14, baseShape, width: 42, height: 36, margin: 6,
       borderPlacement: 'base', borderShape: 'match', borderThickness: 1, borderGap: 2,
     });
-    await page.getByRole('button', { name: '2D design' }).click();
+    await page.getByRole('button', { name: '2D Design' }).click();
     const border = page.locator('#borderPreview');
     await expect(border).toHaveAttribute('d', /^M/);
     await expect(page.getByText('Distance from base edge (mm)')).toBeVisible();
@@ -730,7 +784,7 @@ for (const baseShape of ['rect', 'roundrect', 'circle', 'contour']) {
 for (const borderShape of ['rect', 'roundrect', 'ellipse']) {
   test(`Fit around artwork with a ${borderShape} border leaves enough corner clearance`, async ({ page }) => {
     await load(page, smallBorderArt, { ...borderSettings, width: 60, height: 60, borderShape });
-    await page.getByRole('button', { name: '2D design' }).click();
+    await page.getByRole('button', { name: '2D Design' }).click();
     const border = page.locator('#borderPreview');
     await expect(border).toHaveAttribute('d', /^M/);
     if (borderShape === 'rect') expect(await boundsOf(border)).toEqual([-15.5, -13, 31, 26]);
@@ -747,7 +801,7 @@ for (const borderShape of ['rect', 'roundrect', 'ellipse']) {
 test('contour border follows concavity and disjoint artwork without lining the internal counter', async ({ page }) => {
   const svg = artwork('<path fill-rule="evenodd" d="M0 0H18V6H7V18H0Z M1 1H4V4H1Z M2 2H3V3H2Z M23 12H27V16H23Z"/>');
   await load(page, svg, { ...borderSettings, artWidth: 27, artHeight: 18, borderShape: 'contour', borderGap: 0.8, mirror: false });
-  await page.getByRole('button', { name: '2D design' }).click();
+  await page.getByRole('button', { name: '2D Design' }).click();
   const border = page.locator('#borderPreview');
   await expect(border).toHaveAttribute('d', /^M/);
   expect(await fillsPoint(border, -11, 6.5)).toBe(false); // Counter and island
@@ -884,7 +938,7 @@ test('STL filenames use the SVG name and effective stamp settings', async ({ pag
 
 test('custom border height updates the preview and STL while preserving artwork relief', async ({ page }) => {
   await load(page, smallBorderArt, { ...borderSettings, borderShape: 'rect', edge: 'chamfer' });
-  await page.getByRole('button', { name: '2D design' }).click();
+  await page.getByRole('button', { name: '2D Design' }).click();
   const panel = page.locator('#borderPanel');
   const mode = panel.getByRole('combobox', { name: 'Border height', exact: true });
   const height = panel.getByRole('spinbutton', { name: 'Custom border height (mm)' });

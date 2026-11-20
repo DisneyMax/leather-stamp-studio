@@ -1,11 +1,12 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Leather Stamp Studio — SVG to STL</title>
 <style>
-:root{font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;color:#e9edf2;background:#10151c}*{box-sizing:border-box}body{margin:0}header{padding:19px 26px;border-bottom:1px solid #303945;display:flex;justify-content:space-between;gap:12px;align-items:center}h1{font-size:21px;margin:0}small,.muted{color:#9eacbc}main{display:grid;grid-template-columns:350px minmax(0,1fr)}aside{padding:22px;border-right:1px solid #303945;overflow-y:auto;min-height:0}section{margin-bottom:22px}h2{font-size:13px;letter-spacing:.09em;text-transform:uppercase;color:#b6c2d0;margin:0 0 12px}label{font-size:13px;display:block;margin-bottom:6px}.field{margin:0 0 13px}.pair{display:grid;grid-template-columns:1fr 1fr;gap:10px}input[type=number],select,input[type=file]{width:100%;padding:10px;background:#1b2430;border:1px solid #394655;border-radius:8px;color:#f2f4f7;font-size:14px}input[type=file]{font-size:12px}input[type=checkbox]{accent-color:#d4a66d}button{background:#d9a76b;color:#1c1711;border:0;padding:12px 15px;border-radius:8px;font-weight:700;cursor:pointer}button.secondary{background:#273342;color:#e8edf3}button:disabled{opacity:.45;cursor:not-allowed}.field:has(input:disabled){opacity:.5}.segmented{display:grid;grid-template-columns:1fr 1fr;gap:7px}.segmented label{margin:0;display:flex;align-items:center;gap:6px;padding:10px;border:1px solid #394655;border-radius:8px;cursor:pointer;background:#1b2430}.segmented input{accent-color:#d4a66d}.settings-note{background:#192636;border-left:3px solid #d4a66d;padding:10px 12px;border-radius:4px;margin:8px 0 12px}.measure{font-variant-numeric:tabular-nums;color:#e3c69c;font-weight:600}.section-divider{border:0;border-top:1px solid #303945;margin:16px 0}.readonly{color:#9eacbc}.buttons{display:flex;gap:9px;flex-wrap:wrap}.check{display:flex;gap:8px;align-items:center;margin:10px 0}.check label{margin:0}.hint{font-size:12px;color:#9eacbc;line-height:1.55}#stage{position:relative;min-width:0;min-height:0}#viewport{position:absolute;inset:0}#viewport canvas{display:block;width:100%;height:100%}#overlay{position:absolute;left:18px;top:17px;pointer-events:none;background:#151c25d9;border:1px solid #334051;padding:11px 14px;border-radius:9px;font-size:12px;line-height:1.7}.good{color:#9cdbb0}.bad{color:#ffb0a4}.footer{padding:12px 22px;border-top:1px solid #303945;color:#9eacbc;font-size:12px}@media(min-width:851px){body{display:grid;grid-template-rows:auto minmax(0,1fr) auto;height:100vh;height:100dvh}}@media(max-width:850px){main{display:block}aside{border-right:0;border-bottom:1px solid #303945}#stage{height:65vh;min-height:430px}}
+:root{font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;color:#e9edf2;background:#10151c}*{box-sizing:border-box}body{margin:0}header{padding:19px 26px;border-bottom:1px solid #303945;display:flex;justify-content:space-between;gap:12px;align-items:center}h1{font-size:21px;margin:0}small,.muted{color:#9eacbc}main{display:grid;grid-template-columns:350px minmax(0,1fr)}aside{padding:22px;border-right:1px solid #303945;overflow-y:auto;min-height:0}section{margin-bottom:22px}h2{font-size:13px;letter-spacing:.09em;text-transform:uppercase;color:#b6c2d0;margin:0 0 12px}label{font-size:13px;display:block;margin-bottom:6px}.field{margin:0 0 13px}.pair{display:grid;grid-template-columns:1fr 1fr;gap:10px}input[type=number],select,input[type=file]{width:100%;padding:10px;background:#1b2430;border:1px solid #394655;border-radius:8px;color:#f2f4f7;font-size:14px}input[type=file]{font-size:12px}input[type=checkbox]{accent-color:#d4a66d}button{background:#d9a76b;color:#1c1711;border:0;padding:12px 15px;border-radius:8px;font-weight:700;cursor:pointer}button.secondary{background:#273342;color:#e8edf3}button:disabled{opacity:.45;cursor:not-allowed}.field:has(input:disabled){opacity:.5}.segmented{display:grid;grid-template-columns:1fr 1fr;gap:7px}.segmented label{margin:0;display:flex;align-items:center;gap:6px;padding:10px;border:1px solid #394655;border-radius:8px;cursor:pointer;background:#1b2430}.segmented input{accent-color:#d4a66d}.settings-note{background:#192636;border-left:3px solid #d4a66d;padding:10px 12px;border-radius:4px;margin:8px 0 12px}.measure{font-variant-numeric:tabular-nums;color:#e3c69c;font-weight:600}.section-divider{border:0;border-top:1px solid #303945;margin:16px 0}.readonly{color:#9eacbc}.buttons{display:flex;gap:9px;flex-wrap:wrap}.check{display:flex;gap:8px;align-items:center;margin:10px 0}.check label{margin:0}.hint{font-size:12px;color:#9eacbc;line-height:1.55}#stage{display:grid;grid-template-rows:auto minmax(0,1fr) auto;min-width:0;min-height:0}
+#previewSurface{position:relative;min-height:0;overflow:hidden}#viewport{position:absolute;inset:0}#viewport canvas{display:block;width:100%;height:100%}#overlay{position:absolute;left:18px;top:17px;pointer-events:none;background:#151c25d9;border:1px solid #334051;padding:11px 14px;border-radius:9px;font-size:12px;line-height:1.7}.good{color:#9cdbb0}.bad{color:#ffb0a4}.footer{padding:12px 22px;border-top:1px solid #303945;color:#9eacbc;font-size:12px}@media(min-width:851px){body{display:grid;grid-template-rows:auto minmax(0,1fr) auto;height:100vh;height:100dvh}}@media(max-width:850px){main{display:block}aside{border-right:0;border-bottom:1px solid #303945}#stage{grid-template-rows:auto auto auto}#previewSurface{height:65vh;min-height:330px}}
 
 /* V3.0 user experience and workflow controls */
 :root{color-scheme:dark}button:focus-visible,input:focus-visible,select:focus-visible,.dropzone:focus-visible{outline:2px solid #e3bd84;outline-offset:3px}
-.workflow{position:sticky;top:-22px;z-index:8;background:#10151cf5;border-bottom:1px solid #394655;margin:-22px -22px 20px;padding:16px 22px 14px;backdrop-filter:blur(8px)}
+.workflow{position:sticky;top:0;z-index:8;background:#10151cf5;border-bottom:1px solid #394655;margin:-22px -22px 20px;padding:16px 22px 14px;backdrop-filter:blur(8px)}
 .workflow .buttons{display:grid;grid-template-columns:1fr 1fr}.workflow button{padding:12px 9px;min-height:44px}
 .workflow small{display:block;margin-top:8px}
 .workflow .project-actions{margin-top:6px}
@@ -14,12 +15,21 @@
 .dropzone:hover,.dropzone.dragging{background:#26364a;border-color:#e3b474}.dropzone strong{display:block;margin-bottom:5px}.dropzone small{line-height:1.5}
 .dropzone input{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}
 #artworkName{margin:9px 0 0;font-size:12px;overflow-wrap:anywhere;color:#a9d9b8}
-#stageTools{position:absolute;right:18px;top:17px;z-index:3;display:flex;gap:8px}
-#stageTools button{font-size:12px;padding:9px 11px;background:#273342;color:#ecf1f6;border:1px solid #556172}
+#stageTools{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding:8px 14px;background:#141e29;border-bottom:1px solid #384654}
+#previewNav{display:flex;gap:3px;border:1px solid #556172;border-radius:9px;padding:3px}
+#stageTools button{font-size:12px;padding:8px 10px;min-height:36px;background:#273342;color:#ecf1f6}
+#previewNav button[aria-pressed="true"]{background:#d9a76b;color:#1c1711}
+#artPlacement{margin:0;border:0;border-top:1px solid #384654;border-radius:0}
+#artPlacement summary:focus-visible{outline:2px solid #e3bd84;outline-offset:-3px}
+#artPlacement .advanced-body{max-width:500px}
+#artPlacement .pair{grid-template-columns:repeat(2,minmax(0,1fr))}
+#previewMessage{margin:0}
+#previewMessage:not([hidden])+div{margin-top:4px}
+@media(max-width:850px){#stageTools button,#artPlacement button,#artPlacement>summary{min-height:44px}}
 #readyState{font-weight:650;color:#e6bf8b}.ready-ok{color:#9cdbb0!important}.ready-err{color:#ffb0a4!important}
 .advanced{border-top:1px solid #303945;padding-top:13px;margin-top:13px}.advanced summary{cursor:pointer;color:#d8e2ee;font-weight:600;font-size:13px;margin-bottom:12px}
 .advanced summary:hover{color:#e3bd84}
-@media(max-width:850px){.workflow{position:static;margin:-22px -22px 18px}.workflow .buttons{grid-template-columns:1fr 1fr}#stageTools{right:10px;top:10px}#overlay{left:10px;top:10px;max-width:58%}}
+@media(max-width:850px){.workflow{position:static;margin:-22px -22px 18px}.workflow .buttons{grid-template-columns:1fr 1fr}#overlay{left:10px;top:10px;max-width:calc(100% - 115px)}}
 
 .offset-control{display:flex;align-items:center;gap:12px}.offset-control input[type=number]{width:84px;flex:none}.offset-control input[type=range]{flex:1;min-width:60px;accent-color:#d9a76b}
 #designOffsetField{margin-top:15px}
@@ -41,7 +51,7 @@
 #cornerField[hidden],#bevelField[hidden]{display:none}
 #sizeSummary{margin:8px 0 0}
 @media(max-width:850px){.advanced-group>summary small{max-width:120px}}
-#designView{position:absolute;inset:55px 18px 18px;display:grid;grid-template-rows:minmax(0,1fr) auto;gap:8px}
+#designView{position:absolute;inset:10px 18px 14px;display:grid;grid-template-rows:minmax(0,1fr) auto;gap:8px}
 #designView[hidden]{display:none}
 #designCanvas{width:100%;height:100%;min-height:0}
 #designPlate{fill:#293744;stroke:#8396a8;stroke-width:1.5px;vector-effect:non-scaling-stroke}
@@ -49,7 +59,7 @@
 #designView.dragging #designArt{cursor:grabbing}
 #designGuides{display:none;pointer-events:none;stroke:#d6e4f4;stroke-opacity:.7;stroke-dasharray:4 4;vector-effect:non-scaling-stroke}
 #designView.dragging #designGuides{display:block}
-#viewShortcut{position:absolute;top:63px;right:18px;z-index:2;display:grid;justify-items:center;gap:5px}
+#viewShortcut{position:absolute;top:17px;right:18px;z-index:2;display:grid;justify-items:center;gap:5px}
 #viewShortcut[hidden]{display:none}
 #viewCube{position:relative;width:88px;height:92px}
 #viewCube button{position:absolute;inset:0;width:100%;height:100%;padding:0;border-radius:0;background:var(--face);color:#192636}
@@ -63,11 +73,11 @@
 #viewFront span{left:25%;top:59%}
 #viewRight span{left:75%;top:59%}
 #viewIso{padding:5px 8px;font-size:11px}
-@media(max-width:850px){#viewShortcut{right:10px;top:55px}}
+@media(max-width:850px){#viewShortcut{right:10px;top:10px}}
 #designView.show-last-design #designCanvas{opacity:.45}
 #designStatus{margin:0 auto;text-align:center;background:#151c25;padding:5px 10px;border-radius:6px}
 #stage.show-design #viewport{visibility:hidden}
-@media(max-width:850px){#overlay{top:55px}#designView{inset:50px 10px 15px}}
+@media(max-width:850px){#designView{inset:8px 10px 12px}}
 #printabilityNote{color:#e6bf8b;line-height:1.4;margin:7px 0 0;font-size:12px}
 #designFooter{display:grid;justify-items:center;gap:4px}
 #changeControls{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:4px 12px;font-size:12px}
@@ -125,7 +135,7 @@
 <ol class="hint">
 <li><strong>Start with the paw print.</strong> Choose <b>Use example paw print</b> and leave <b>Fit to base</b> selected. For your own SVG, use filled shapes and convert text and strokes to outlines in your vector editor.</li>
 <li><strong>Choose the impression.</strong> Start with <b>Debossing (raised stamp)</b> to press the paw into the leather. Choose <b>Embossing (recessed die)</b> for a raised impression. Keep <b>Mirror artwork for stamping</b> on for artwork that should read correctly on the leather. If the SVG is already reversed, turn it off.</li>
-<li><strong>Review the design.</strong> Open <b>2D design</b> to check placement and holes. Turn on <b>Check small features</b> for estimated trouble spots. If you adjust thickness, use <b>Show thickness changes</b> to see what was added or removed.</li>
+<li><strong>Review the design.</strong> Open <b>2D Design</b> to check placement and holes. Turn on <b>Check small features</b> for estimated trouble spots. If you adjust thickness, use <b>Show thickness changes</b> to see what was added or removed.</li>
 <li><strong>Generate and inspect.</strong> Select <b>Generate 3D stamp</b>, check the 3D preview, and select <b>Download STL</b> once the mesh passes validation. In Bambu Studio, import in millimeters, verify the dimensions, and inspect the sliced layers for missing details or filled holes. Test the printed stamp on a leather offcut.</li>
 <li><strong>Keep your work.</strong> Use <b>Save project JSON</b> below Download STL to save your SVG and settings. Use <b>Load project JSON</b> to resume later.</li>
 </ol>
@@ -189,16 +199,6 @@
 <div class="offset-control"><input id="designOffset" type="number" min="-0.5" max="0.5" step="any" value="0.00" required aria-describedby="offsetHelp"><input id="designOffsetSlider" type="range" min="-0.5" max="0.5" step="0.05" value="0" aria-label="Design thickness adjustment"></div>
 <p id="offsetHelp" class="hint">+ thickens details · − thins them · 0 keeps your SVG unchanged. The slider moves in 0.05 mm steps. Type a value for finer control. A strong adjustment can close small holes or remove thin details.</p>
 </div>
-<details id="artPlacement" class="nested-advanced">
-<summary>Artwork position and rotation</summary>
-<div class="pair">
-<div class="field"><label for="artX">Horizontal offset (mm)</label><input id="artX" type="number" min="-200" max="200" step="0.5" value="0"></div>
-<div class="field"><label for="artY">Vertical offset (mm)</label><input id="artY" type="number" min="-200" max="200" step="0.5" value="0"></div>
-</div>
-<div class="field"><label for="artRotation">Clockwise rotation (°)</label><input id="artRotation" type="number" step="1" value="0"></div>
-<p class="hint">Positive offsets move the artwork right and up in the 2D view.</p>
-<div class="buttons"><button type="button" class="secondary" id="centerArt">Center artwork</button><button type="button" class="secondary" id="resetPlacement">Reset position and rotation</button></div>
-</details>
 <details class="nested-advanced"><summary>Mesh detail controls</summary>
 <div class="pair"><div class="field"><label for="curve">Curve detail</label><input id="curve" type="number" min="3" max="128" step="1" value="64"></div>
 <div class="field"><label for="tolerance">Curve accuracy (mm)</label><input id="tolerance" type="number" min="0.005" max="0.3" step="0.005" value="0.035"></div></div>
@@ -220,7 +220,15 @@
 </div>
 <p class="hint" id="presetStatus" role="status"></p>
 </div></details>
-</aside><div id="stage"><div id="viewport"></div><div id="designView" hidden>
+</aside><div id="stage">
+<div id="stageTools">
+<div id="previewNav" role="group" aria-label="Preview view">
+<button id="viewDesign" type="button" aria-controls="designView" aria-pressed="false">2D Design</button>
+<button id="viewPreview" type="button" aria-controls="viewport" aria-pressed="true">3D Preview</button>
+</div>
+<button id="resetView" type="button" title="Recenter and fit your stamp in the 3D view" hidden>Fit view</button>
+</div>
+<div id="previewSurface"><div id="viewport"></div><div id="designView" hidden>
 <svg id="designCanvas" role="img" aria-label="Top view of the stamp artwork and base">
 <path id="designPlate" fill-rule="evenodd"></path>
 <path id="designArt" fill-rule="evenodd"></path>
@@ -249,15 +257,28 @@
 </div>
 </div>
 </div>
-<div id="stageTools"><button id="toggleDesign" aria-controls="designView" type="button">2D design</button><button id="resetView" title="Recenter and fit your stamp in the 3D view">⤢ Fit view</button></div>
-<div id="viewShortcut" role="group" aria-label="3D view shortcuts">
+<div id="viewShortcut" hidden role="group" aria-label="3D view shortcuts">
 <div id="viewCube">
 <button id="viewTop" data-direction="0,-0.0001,1" type="button" title="Top view"><span>Top</span></button>
 <button id="viewFront" data-direction="0,-1,0" type="button" title="Front view"><span>Front</span></button>
 <button id="viewRight" data-direction="1,0,0" type="button" title="Right view"><span>Right</span></button>
 </div>
 <button id="viewIso" class="secondary" data-direction="1,-1,1" type="button" title="Isometric view">Isometric</button>
-</div><div id="overlay"><b>3D preview</b><br>Drag to rotate · Scroll to zoom<br>Right-drag to pan</div></div></main><div class="footer"><span id="buildVersion">Build version unavailable</span> · Test stamps on a leather offcut before production use.</div>
+</div>
+<div id="overlay"><p id="previewMessage" role="status">Generate a stamp to see it here.</p><div id="orbitHelp" hidden>Drag to rotate · Scroll to zoom<br>Right-drag to pan</div></div>
+</div>
+<details id="artPlacement" class="advanced-group" hidden>
+<summary><span>Artwork position and rotation</span></summary>
+<div class="advanced-body">
+<div class="pair">
+<div class="field"><label for="artX">Horizontal offset (mm)</label><input id="artX" type="number" min="-200" max="200" step="0.5" value="0"></div>
+<div class="field"><label for="artY">Vertical offset (mm)</label><input id="artY" type="number" min="-200" max="200" step="0.5" value="0"></div>
+</div>
+<div class="field"><label for="artRotation">Clockwise rotation (°)</label><input id="artRotation" type="number" step="1" value="0"></div>
+<p class="hint">Positive offsets move the artwork right and up in the 2D view.</p>
+<div class="buttons"><button type="button" class="secondary" id="centerArt">Center artwork</button><button type="button" class="secondary" id="resetPlacement">Reset position and rotation</button></div>
+</div></details>
+</div></main><div class="footer"><span id="buildVersion">Build version unavailable</span> · Test stamps on a leather offcut before production use.</div>
 <script>
 const buildVersion = document.getElementById('buildVersion');
 if (location.protocol === 'file:') {
@@ -295,6 +316,7 @@ function progress(message,kind='pending'){
  const ready=$('readyState');
  if(ready.textContent!==message)ready.textContent=message;
  ready.className=kind==='ok'?'ready-ok':kind==='error'?'ready-err':'';
+ syncPreviewControls();
 }
 function readyToGenerate(message=''){
  const state=finalMesh?'Design changed — regenerate to download':'Ready to generate';
@@ -482,7 +504,7 @@ function markDirty(){
  readyToGenerate();
  scheduleDesignPreview();
 }
-for(const el of document.querySelectorAll('aside input, aside select')){
+for(const el of document.querySelectorAll('aside input, aside select, #artPlacement input')){
  if(el.type!=='file'&&!el.closest('#presetSettings'))el.addEventListener(['number','range'].includes(el.type)?'input':'change',markDirty);
 }
 function simplifyPolyline(pts,tol){
@@ -1220,16 +1242,32 @@ designCanvas.addEventListener('lostpointercapture',event=>{
  $('designView').classList.remove('dragging');
 });
 
+function syncPreviewControls(){
+ const in3D=$('designView').hidden;
+ const hasModel=Boolean(finalMesh);
+ const message=!hasModel?'Generate a stamp to see it here.':
+   $('export').disabled?'Showing the previous stamp. Regenerate to download.':'';
+ const previewMessage=$('previewMessage');
+ if(previewMessage.textContent!==message)previewMessage.textContent=message;
+ previewMessage.hidden=!message;
+ $('orbitHelp').hidden=!hasModel;
+ $('resetView').hidden=!in3D||!hasModel;
+ $('viewShortcut').hidden=!in3D||!hasModel;
+}
+
 function showDesignView(showDesign){
+ if(!showDesign&&$('artPlacement').contains(document.activeElement))$('viewPreview').focus();
  $('stage').classList.toggle('show-design',showDesign);
  $('designView').hidden=!showDesign;
+ $('artPlacement').hidden=!showDesign;
  $('overlay').hidden=showDesign;
- $('resetView').hidden=showDesign;
- $('viewShortcut').hidden=showDesign;
- $('toggleDesign').textContent=showDesign?'3D preview':'2D design';
- scheduleDesignPreview();
+ $('viewDesign').setAttribute('aria-pressed',String(showDesign));
+ $('viewPreview').setAttribute('aria-pressed',String(!showDesign));
+ syncPreviewControls();
+ if(showDesign)scheduleDesignPreview();
 }
-$('toggleDesign').onclick=()=>showDesignView($('designView').hidden);
+$('viewDesign').onclick=()=>showDesignView(true);
+$('viewPreview').onclick=()=>showDesignView(false);
 $('viewShortcut').addEventListener('click',event=>{
  const button=event.target.closest('button[data-direction]');
  if(!button)return;
