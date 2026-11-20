@@ -109,6 +109,7 @@ for (const mode of ['raised', 'recessed']) {
 test('advanced controls follow the selected mode, base shape and sizing', async ({ page }) => {
   const advanced = page.locator('#advancedSettings');
   await expect(advanced).toHaveJSProperty('open', false);
+  await expect(page.locator('#edge')).toHaveValue('sharp');
   await expect(page.locator('#artPlacement > summary')).toBeHidden();
   await expect(page.locator('#designOffset')).toBeHidden();
   await expect(page.locator('#exactSizeFields')).toBeHidden();
@@ -139,7 +140,8 @@ test('advanced controls follow the selected mode, base shape and sizing', async 
   await page.locator('#resetDefaults').click();
   await expect(page.locator('#designOffsetSlider')).toHaveValue('0');
   await expect(page.locator('#designOffset')).toHaveValue('0');
-  await expect(page.locator('#edge')).toHaveValue('chamfer');
+  await expect(page.locator('#edge')).toHaveValue('sharp');
+  await expect(page.locator('#bevelField')).toBeHidden();
   await expect(page.locator('#cornerField')).toBeHidden();
 });
 

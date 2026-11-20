@@ -119,7 +119,7 @@
 <section class="ui-section"><h2>02 / Stamp setup</h2>
 <div class="field"><label for="mode">Impression</label><select id="mode"><option value="raised">Debossing (raised stamp)</option><option value="recessed">Embossing (recessed die)</option></select></div>
 <div class="check"><input id="mirror" type="checkbox" checked><label for="mirror">Mirror artwork for stamping</label></div>
-<div class="field"><label for="edge">Artwork edge</label><select id="edge" aria-describedby="edgeHelp"><option value="sharp">Sharp</option><option value="chamfer" selected>Chamfered · recommended starting point</option><option value="round">Rounded</option></select></div>
+<div class="field"><label for="edge">Artwork edge</label><select id="edge" aria-describedby="edgeHelp"><option value="sharp" selected>Sharp</option><option value="chamfer">Chamfered</option><option value="round">Rounded</option></select></div>
 <p class="hint" id="edgeHelp"></p>
 </section>
 <section class="ui-section"><h2>03 / Size</h2>
@@ -1241,11 +1241,12 @@ function syncSimpleUI(){
  $('edge').disabled=recessed;
  $('bevelField').hidden=recessed||$('edge').value==='sharp';
  $('edgeHelp').textContent=recessed?'Recessed dies use sharp cavity walls.'
-   :'Start with a 0.25 mm chamfer. The app can reduce it to produce a valid mesh. Change the edge size in Advanced settings.';
+   :$('edge').value==='sharp'?'Sharp is the default. Choose Chamfered or Rounded to soften the raised edge.'
+   :'Change the edge size in Advanced settings. The app may reduce it to produce a valid mesh.';
 }
 ['fitArt','customArt','baseShape','edge','mode'].forEach(id=>$(id).addEventListener('change',syncSimpleUI));
 $('resetDefaults').onclick=()=>{
- const defaults={...defaultPlacement,...defaultBorder,designOffset:0,mode:'raised',mirror:true,width:40,height:40,base:6,depth:1.5,margin:4,curve:64,tolerance:0.035,baseShape:'rect',corner:5,edge:'chamfer',bevel:0.25,simplify:0.02,lockAspect:true};
+ const defaults={...defaultPlacement,...defaultBorder,designOffset:0,mode:'raised',mirror:true,width:40,height:40,base:6,depth:1.5,margin:4,curve:64,tolerance:0.035,baseShape:'rect',corner:5,edge:'sharp',bevel:0.25,simplify:0.02,lockAspect:true};
  for(const [id,value] of Object.entries(defaults)){$(id).type==='checkbox'?$(id).checked=value:$(id).value=value;}
  $('fitArt').checked=true;$('customArt').checked=false;syncSizingUI();syncSimpleUI();syncBorderUI(defaults.borderShape);$('designOffsetSlider').value=$('designOffset').value;
  $('export').disabled=true;status.className='';status.textContent='Recommended settings restored. Click Generate 3D stamp.';
