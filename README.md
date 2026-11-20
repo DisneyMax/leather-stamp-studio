@@ -18,6 +18,16 @@ The **First stamp guide** below the artwork upload walks through the paw-print e
 - **Check small features** highlights potentially narrow artwork in purple and small gaps or holes in green. The adjustable threshold starts at 0.4 mm. Treat it as an estimate of geometry to inspect in the slicer.
 - **Projects & technical checks → Save project JSON** saves the SVG and settings together. **Local presets** saves reusable settings in the current browser. Applying a preset keeps the artwork you already have loaded.
 
+## Add a stamp border
+
+Open **Add border** and enable **Add a printable border**. The green ring in **2D design** is the printable border. Set its width with **Border thickness**.
+
+- **Follow base** uses the backing plate outline. **Distance from base edge** measures inward to the outside of the ring. Zero puts the ring flush with the base.
+- **Fit around artwork** uses the placed artwork after sizing, mirroring, and thickness adjustment. **Gap from artwork** measures to the inside of the ring. Choose a rectangle, rounded rectangle, ellipse, or SVG contour. Rounded rectangles and ellipses may use extra clearance at corners.
+- **SVG contour** follows the artwork's outer silhouette. Separate shapes may have separate rings, and letter counters receive no rings.
+
+Borders are available for **Debossing (raised stamp)**. They use sharp edges at artwork height. For a zero artwork gap, choose **Sharp** artwork edges so touching relief can join. If the ring overruns the plate or collapses, reduce the gap or thickness, adjust the artwork, or enlarge the base.
+
 ## Validation
 
 Mesh checks cover open boundaries, non-manifold edges, inconsistent face orientation, and degenerate triangles. Printing and pressing also depend on your slicer, printer, material, and design.

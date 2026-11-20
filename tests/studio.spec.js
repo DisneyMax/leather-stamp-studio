@@ -644,3 +644,144 @@ test('local presets survive reload and apply settings to the current SVG', async
   await openPresets();
   await expect(list).toBeDisabled();
 });
+
+const smallBorderArt = artwork('<path d="M0 0H25V20H0Z"/>');
+const borderSettings = { edge: 'sharp', artSizing: 'custom', artWidth: 25, artHeight: 20, borderEnabled: true };
+const boundsOf = path => path.evaluate(element => {
+  const { x, y, width, height } = element.getBBox();
+  return [x, y, width, height];
+});
+const fillsPoint = (path, x, y) => path.evaluate((element, [px, py]) =>
+  element.isPointInFill(new DOMPoint(px, -py)), [x, y]);
+
+for (const baseShape of ['rect', 'roundrect', 'circle', 'contour']) {
+  test(`Follow base builds a closed border on a ${baseShape} plate`, async ({ page }) => {
+    await load(page, smallBorderArt, {
+      ...borderSettings, artWidth: 18, artHeight: 14, baseShape, width: 42, height: 36, margin: 6,
+      borderPlacement: 'base', borderShape: 'match', borderThickness: 1, borderGap: 2,
+    });
+    await page.getByRole('button', { name: '2D design' }).click();
+    const border = page.locator('#borderPreview');
+    await expect(border).toHaveAttribute('d', /^M/);
+    await expect(page.getByText('Distance from base edge (mm)')).toBeVisible();
+    const x = baseShape === 'contour' ? 12.5 : 18.5;
+    expect(await fillsPoint(border, x, 0)).toBe(true);
+    expect(await fillsPoint(border, x - 1, 0)).toBe(false);
+    expect(await fillsPoint(border, x + 1, 0)).toBe(false);
+    await generate(page);
+    const triangles = parseSTL(await download(page, '#export'));
+    expectClosedMesh(triangles);
+    expect(surfaceHeight(triangles, x, 0)).toBe(7.5);
+    expect(surfaceHeight(triangles, x - 1, 0)).toBe(6);
+  });
+}
+
+for (const borderShape of ['rect', 'roundrect', 'ellipse']) {
+  test(`Fit around artwork with a ${borderShape} border leaves enough corner clearance`, async ({ page }) => {
+    await load(page, smallBorderArt, { ...borderSettings, width: 60, height: 60, borderShape });
+    await page.getByRole('button', { name: '2D design' }).click();
+    const border = page.locator('#borderPreview');
+    await expect(border).toHaveAttribute('d', /^M/);
+    if (borderShape === 'rect') expect(await boundsOf(border)).toEqual([-15.5, -13, 31, 26]);
+    // Sample just inside the requested clearance around the top-right corner.
+    for (const angle of [0, Math.PI / 8, Math.PI / 4, 3 * Math.PI / 8, Math.PI / 2]) {
+      expect(await fillsPoint(border, 12.5 + 1.999 * Math.cos(angle), 10 + 1.999 * Math.sin(angle))).toBe(false);
+    }
+    expect(await fillsPoint(border, 12, 9)).toBe(false);
+    await generate(page);
+    expectClosedMesh(parseSTL(await download(page, '#export')));
+  });
+}
+
+test('contour border follows concavity and disjoint artwork without lining the internal counter', async ({ page }) => {
+  const svg = artwork('<path fill-rule="evenodd" d="M0 0H18V6H7V18H0Z M1 1H4V4H1Z M2 2H3V3H2Z M23 12H27V16H23Z"/>');
+  await load(page, svg, { ...borderSettings, artWidth: 27, artHeight: 18, borderShape: 'contour', borderGap: 0.8, mirror: false });
+  await page.getByRole('button', { name: '2D design' }).click();
+  const border = page.locator('#borderPreview');
+  await expect(border).toHaveAttribute('d', /^M/);
+  expect(await fillsPoint(border, -11, 6.5)).toBe(false); // Counter and island
+  expect(await fillsPoint(border, 4, -6)).toBe(false); // Open concavity
+  expect(await fillsPoint(border, 0, 1.7)).toBe(true); // Inside the notch's border
+  expect(await fillsPoint(border, 14.8, -5)).toBe(true); // Disjoint component
+  await page.locator('#advancedSettings > summary').click();
+  const original = await border.getAttribute('d');
+  await page.locator('#designOffset').fill('0.25');
+  await expect(border).not.toHaveAttribute('d', original);
+  const expanded = (await boundsOf(border))[2];
+  await page.locator('#designOffset').fill('-0.25');
+  await expect.poll(async () => (await boundsOf(border))[2]).toBeLessThan(expanded);
+  await page.locator('#mirror').check();
+  await expect.poll(() => fillsPoint(border, -14.8, -5)).toBe(true);
+  await generate(page);
+  expectClosedMesh(parseSTL(await download(page, '#export')));
+});
+
+test('sharp border shares a valid solid with beveled artwork and persists in a project', async ({ page }) => {
+  await load(page, smallBorderArt, { ...borderSettings, edge: 'chamfer', borderShape: 'rect' });
+  await generate(page);
+  const geometry = parseSTL(await download(page, '#export'));
+  expectClosedMesh(geometry);
+  expect(surfaceHeight(geometry, 15, 0)).toBe(7.5);
+  await page.locator('#projectSettings > summary').click();
+  const saved = JSON.parse(await download(page, '#save'));
+  expect(saved.settings).toMatchObject({ borderEnabled: true, borderPlacement: 'artwork', borderShape: 'rect', borderGap: '2', borderThickness: '1' });
+  await page.locator('#borderGap').fill('20');
+  await expect(page.locator('#export')).toBeDisabled();
+  await page.locator('#build').click();
+  await expect(page.locator('#status')).toContainText('border extends beyond the base');
+  await expect(page.locator('#export')).toBeDisabled();
+  await load(page, saved.svg, saved.settings);
+  await generate(page);
+  expect(parseSTL(await download(page, '#export'))).toEqual(geometry);
+
+  await load(page, saved.svg, { edge: 'sharp' });
+  await expect(page.locator('#borderEnabled')).not.toBeChecked();
+  await generate(page);
+  const legacy = await download(page, '#export');
+  expectClosedMesh(parseSTL(legacy));
+  await load(page, saved.svg, { edge: 'sharp', borderEnabled: false, borderShape: 'contour', borderGap: 20 });
+  await generate(page);
+  expect(await download(page, '#export')).toEqual(legacy);
+});
+
+test('zero gap joins a sharp frame and invalid border settings block export', async ({ page }) => {
+  await load(page, smallBorderArt, { ...borderSettings, borderShape: 'rect', borderGap: 0 });
+  await generate(page);
+  const triangles = parseSTL(await download(page, '#export'));
+  expectClosedMesh(triangles);
+  expect(surfaceHeight(triangles, 13, 0)).toBe(7.5);
+  await page.locator('#edge').selectOption('round');
+  await page.locator('#build').click();
+  await expect(page.locator('#status')).toContainText('zero artwork gap requires Sharp');
+  await expect(page.locator('#export')).toBeDisabled();
+
+  await load(page, smallBorderArt, { ...borderSettings, borderPlacement: 'base', borderGap: 20 });
+  await page.locator('#build').click();
+  await expect(page.locator('#status')).toContainText('border collapses or splits');
+  await expect(page.locator('#export')).toBeDisabled();
+
+  await load(page, smallBorderArt, { ...borderSettings, borderShape: 'unknown' });
+  await page.locator('#build').click();
+  await expect(page.locator('#status')).toContainText('valid border placement and shape');
+  await expect(page.locator('#export')).toBeDisabled();
+
+  await page.locator('#mode').selectOption('recessed');
+  await page.locator('#build').click();
+  await expect(page.locator('#status')).toContainText('Borders require Debossing');
+  await expect(page.locator('#export')).toBeDisabled();
+});
+
+
+test('a flush Follow base border works on a narrow screen', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 660 });
+  const panel = page.locator('#borderPanel');
+  await expect(panel.locator('#borderEnabled')).toBeHidden();
+  await load(page, smallBorderArt, { ...borderSettings, edge: 'round', borderPlacement: 'base', borderGap: 0 });
+  await expect(panel.locator('#borderGap')).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
+  await generate(page);
+  const triangles = parseSTL(await download(page, '#export'));
+  expectClosedMesh(triangles);
+  expect(surfaceHeight(triangles, 19.5, 0)).toBe(7.5);
+  await expect(page.locator('#meshDetails')).toHaveJSProperty('open', false);
+});
