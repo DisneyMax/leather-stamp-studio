@@ -44,7 +44,11 @@ For each manual test, record the artwork, project settings, edge profile and app
 
 ## Development
 
-GitHub Pages publishes the root of `feature/v3-3-offset-warnings`. The V3.0 baseline is on `main`. Use a feature branch and pull request for changes. [Current preview PR](https://github.com/DisneyMax/leather-stamp-studio/pull/7)
+GitHub Pages currently publishes the root of `feature/stamp-border`. Stamp borders are merged into `main`. Use a feature branch and pull request for changes. [Stamp border PR](https://github.com/DisneyMax/leather-stamp-studio/pull/8)
+
+- [Implemented features](docs/IMPLEMENTED_FEATURES.md) for the current app capabilities.
+- [Feature plan](docs/FEATURE_PLAN.md) for upcoming priorities and acceptance criteria.
+- [Fixes and validation plan](docs/FIXES_PLAN.md) for open regressions, release checks, and verified fixes.
 
 Open `index.html` in a modern WebGL-capable browser, or serve the checkout with `python3 -m http.server 8000` and open `http://localhost:8000`. Keep `polygon-geometry.js` beside `index.html`. The page loads Three.js and Clipper from CDNs.
 
