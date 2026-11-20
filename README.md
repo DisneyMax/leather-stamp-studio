@@ -44,7 +44,7 @@ For each manual test, record the artwork, project settings, edge profile and app
 
 ## Development
 
-GitHub Pages currently publishes the root of `feature/stamp-border`. Stamp borders are merged into `main`. Use a feature branch and pull request for changes. [Stamp border PR](https://github.com/DisneyMax/leather-stamp-studio/pull/8)
+GitHub Pages publishes the root of `main`. Each deployment displays its commit SHA (shortened to seven characters) in the footer. This also works when Pages publishes a feature branch for a pull request preview. Use a feature branch and pull request for changes.
 
 - [Implemented features](docs/IMPLEMENTED_FEATURES.md) for the current app capabilities.
 - [Feature plan](docs/FEATURE_PLAN.md) for upcoming priorities and acceptance criteria.

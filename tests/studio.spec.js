@@ -9,6 +9,7 @@ const compound = artwork('<path fill-rule="evenodd" d="M0 0H32V32H0Z M4 4H28V28H
 test.beforeEach(async ({ page }) => {
   // Exercise the production HTML and its pinned libraries without live CDN requests.
   await page.route('http://studio.test/', route => route.fulfill({ path: path.join(root, 'index.html') }));
+  await page.route('http://studio.test/build-version.json', route => route.fulfill({ status: 404 }));
   await page.route('http://studio.test/polygon-geometry.js?v=stamp-border-1', route =>
     route.fulfill({ path: path.join(root, 'polygon-geometry.js'), contentType: 'text/javascript' }));
   await page.route('https://cdn.jsdelivr.net/npm/clipper-lib@6.4.2/clipper.js', route =>
@@ -25,6 +26,19 @@ test.beforeEach(async ({ page }) => {
     route.fulfill({ path: path.join(root, 'node_modules/three/build/three.core.js'), contentType: 'text/javascript' }));
   await page.goto('http://studio.test/');
   await expect(page.locator('#viewport canvas')).toBeVisible();
+});
+
+test('shows the deployed build in the footer and keeps the header version-free', async ({ page }) => {
+  const commit = '1234567890abcdef1234567890abcdef12345678';
+  await page.route('http://studio.test/build-version.json', route => route.fulfill({ json: { commit } }));
+  await page.reload();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Leather Stamp Studio');
+  await expect(page.locator('#buildVersion')).toHaveText('Build 1234567');
+  await expect(page.locator('#buildVersion')).toHaveAttribute('title', commit);
+});
+
+test('shows a fallback when deployment metadata is unavailable', async ({ page }) => {
+  await expect(page.locator('#buildVersion')).toHaveText('Build version unavailable');
 });
 
 async function load(page, svg, settings) {
