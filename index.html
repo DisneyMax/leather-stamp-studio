@@ -1,25 +1,25 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Leather Stamp Studio — SVG to STL</title>
 <style>
-:root{font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;color:#e9edf2;background:#10151c}*{box-sizing:border-box}body{margin:0}header{padding:19px 26px;border-bottom:1px solid #303945;display:flex;justify-content:space-between;gap:12px;align-items:center}h1{font-size:21px;margin:0}small,.muted{color:#9eacbc}main{display:grid;grid-template-columns:350px minmax(0,1fr)}aside{padding:22px;border-right:1px solid #303945;overflow-y:auto;min-height:0}section{margin-bottom:22px}h2{font-size:13px;letter-spacing:.09em;text-transform:uppercase;color:#b6c2d0;margin:0 0 12px}label{font-size:13px;display:block;margin-bottom:6px}.field{margin:0 0 13px}.pair{display:grid;grid-template-columns:1fr 1fr;gap:10px}input[type=number],select,input[type=file]{width:100%;padding:10px;background:#1b2430;border:1px solid #394655;border-radius:8px;color:#f2f4f7;font-size:14px}input[type=file]{font-size:12px}input[type=checkbox]{accent-color:#d4a66d}button{background:#d9a76b;color:#1c1711;border:0;padding:12px 15px;border-radius:8px;font-weight:700;cursor:pointer}button.secondary{background:#273342;color:#e8edf3}button:disabled{opacity:.45;cursor:not-allowed}.field:has(input:disabled){opacity:.5}.segmented{display:grid;grid-template-columns:1fr 1fr;gap:7px}.segmented label{margin:0;display:flex;align-items:center;gap:6px;padding:10px;border:1px solid #394655;border-radius:8px;cursor:pointer;background:#1b2430}.segmented input{accent-color:#d4a66d}.settings-note{background:#192636;border-left:3px solid #d4a66d;padding:10px 12px;border-radius:4px;margin:8px 0 12px}.measure{font-variant-numeric:tabular-nums;color:#e3c69c;font-weight:600}.section-divider{border:0;border-top:1px solid #303945;margin:16px 0}.readonly{color:#9eacbc}.buttons{display:flex;gap:9px;flex-wrap:wrap}.check{display:flex;gap:8px;align-items:center;margin:10px 0}.check label{margin:0}.hint{font-size:12px;color:#9eacbc;line-height:1.55}#stage{position:relative;min-width:0;min-height:0}#viewport{position:absolute;inset:0}#viewport canvas{display:block;width:100%;height:100%}#overlay{position:absolute;left:18px;top:17px;pointer-events:none;background:#151c25d9;border:1px solid #334051;padding:11px 14px;border-radius:9px;font-size:12px;line-height:1.7}#status{position:absolute;bottom:18px;left:18px;right:18px;max-width:750px;background:#1d2936e8;border:1px solid #3a4958;border-radius:9px;padding:12px 15px;font-size:13px;white-space:pre-wrap;line-height:1.5}.good{color:#9cdbb0}.bad{color:#ffb0a4}.footer{padding:12px 22px;border-top:1px solid #303945;color:#9eacbc;font-size:12px}@media(min-width:851px){body{display:grid;grid-template-rows:auto minmax(0,1fr) auto;height:100vh;height:100dvh}}@media(max-width:850px){main{display:block}aside{border-right:0;border-bottom:1px solid #303945}#stage{height:65vh;min-height:430px}}
+:root{font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;color:#e9edf2;background:#10151c}*{box-sizing:border-box}body{margin:0}header{padding:19px 26px;border-bottom:1px solid #303945;display:flex;justify-content:space-between;gap:12px;align-items:center}h1{font-size:21px;margin:0}small,.muted{color:#9eacbc}main{display:grid;grid-template-columns:350px minmax(0,1fr)}aside{padding:22px;border-right:1px solid #303945;overflow-y:auto;min-height:0}section{margin-bottom:22px}h2{font-size:13px;letter-spacing:.09em;text-transform:uppercase;color:#b6c2d0;margin:0 0 12px}label{font-size:13px;display:block;margin-bottom:6px}.field{margin:0 0 13px}.pair{display:grid;grid-template-columns:1fr 1fr;gap:10px}input[type=number],select,input[type=file]{width:100%;padding:10px;background:#1b2430;border:1px solid #394655;border-radius:8px;color:#f2f4f7;font-size:14px}input[type=file]{font-size:12px}input[type=checkbox]{accent-color:#d4a66d}button{background:#d9a76b;color:#1c1711;border:0;padding:12px 15px;border-radius:8px;font-weight:700;cursor:pointer}button.secondary{background:#273342;color:#e8edf3}button:disabled{opacity:.45;cursor:not-allowed}.field:has(input:disabled){opacity:.5}.segmented{display:grid;grid-template-columns:1fr 1fr;gap:7px}.segmented label{margin:0;display:flex;align-items:center;gap:6px;padding:10px;border:1px solid #394655;border-radius:8px;cursor:pointer;background:#1b2430}.segmented input{accent-color:#d4a66d}.settings-note{background:#192636;border-left:3px solid #d4a66d;padding:10px 12px;border-radius:4px;margin:8px 0 12px}.measure{font-variant-numeric:tabular-nums;color:#e3c69c;font-weight:600}.section-divider{border:0;border-top:1px solid #303945;margin:16px 0}.readonly{color:#9eacbc}.buttons{display:flex;gap:9px;flex-wrap:wrap}.check{display:flex;gap:8px;align-items:center;margin:10px 0}.check label{margin:0}.hint{font-size:12px;color:#9eacbc;line-height:1.55}#stage{position:relative;min-width:0;min-height:0}#viewport{position:absolute;inset:0}#viewport canvas{display:block;width:100%;height:100%}#overlay{position:absolute;left:18px;top:17px;pointer-events:none;background:#151c25d9;border:1px solid #334051;padding:11px 14px;border-radius:9px;font-size:12px;line-height:1.7}.good{color:#9cdbb0}.bad{color:#ffb0a4}.footer{padding:12px 22px;border-top:1px solid #303945;color:#9eacbc;font-size:12px}@media(min-width:851px){body{display:grid;grid-template-rows:auto minmax(0,1fr) auto;height:100vh;height:100dvh}}@media(max-width:850px){main{display:block}aside{border-right:0;border-bottom:1px solid #303945}#stage{height:65vh;min-height:430px}}
 
 /* V3.0 user experience and workflow controls */
 :root{color-scheme:dark}button:focus-visible,input:focus-visible,select:focus-visible,.dropzone:focus-visible{outline:2px solid #e3bd84;outline-offset:3px}
 .workflow{position:sticky;top:-22px;z-index:8;background:#10151cf5;border-bottom:1px solid #394655;margin:-22px -22px 20px;padding:16px 22px 14px;backdrop-filter:blur(8px)}
 .workflow .buttons{display:grid;grid-template-columns:1fr 1fr}.workflow button{padding:12px 9px;min-height:44px}
-.workflow small{display:block;margin-top:8px}.step-hint{font-size:12px;color:#c4a77f;font-weight:600;margin:0 0 12px}
+.workflow small{display:block;margin-top:8px}
+.workflow .project-actions{margin-top:6px}
+.project-actions button{font-size:12px}
 .dropzone{display:block;border:2px dashed #596779;padding:14px;border-radius:12px;background:#172331;cursor:pointer;text-align:center;transition:background .2s,border-color .2s;margin:5px 0 10px}
 .dropzone:hover,.dropzone.dragging{background:#26364a;border-color:#e3b474}.dropzone strong{display:block;margin-bottom:5px}.dropzone small{line-height:1.5}
 .dropzone input{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}
 #artworkName{margin:9px 0 0;font-size:12px;overflow-wrap:anywhere;color:#a9d9b8}
 #stageTools{position:absolute;right:18px;top:17px;z-index:3;display:flex;gap:8px}
 #stageTools button{font-size:12px;padding:9px 11px;background:#273342;color:#ecf1f6;border:1px solid #556172}
-#statusTitle{position:absolute;bottom:0;left:0;right:0;transform:translateY(calc(100% + 8px));display:none}
-#status{max-height:36vh;overflow-y:auto;z-index:3}
 #readyState{font-weight:650;color:#e6bf8b}.ready-ok{color:#9cdbb0!important}.ready-err{color:#ffb0a4!important}
 .advanced{border-top:1px solid #303945;padding-top:13px;margin-top:13px}.advanced summary{cursor:pointer;color:#d8e2ee;font-weight:600;font-size:13px;margin-bottom:12px}
 .advanced summary:hover{color:#e3bd84}
-@media(max-width:850px){.workflow{top:0;margin:-22px -22px 18px}.workflow .buttons{grid-template-columns:1fr 1fr}#stageTools{right:10px;top:10px}#overlay{left:10px;top:10px;max-width:58%}#status{bottom:10px;left:10px;right:10px;max-height:40vh}}
+@media(max-width:850px){.workflow{position:static;margin:-22px -22px 18px}.workflow .buttons{grid-template-columns:1fr 1fr}#stageTools{right:10px;top:10px}#overlay{left:10px;top:10px;max-width:58%}}
 
 .offset-control{display:flex;align-items:center;gap:12px}.offset-control input[type=number]{width:84px;flex:none}.offset-control input[type=range]{flex:1;min-width:60px;accent-color:#d9a76b}
 #designOffsetField{margin-top:15px}
@@ -66,7 +66,6 @@
 @media(max-width:850px){#viewShortcut{right:10px;top:55px}}
 #designView.show-last-design #designCanvas{opacity:.45}
 #designStatus{margin:0 auto;text-align:center;background:#151c25;padding:5px 10px;border-radius:6px}
-#stage.show-design #status{display:none}
 #stage.show-design #viewport{visibility:hidden}
 @media(max-width:850px){#overlay{top:55px}#designView{inset:50px 10px 15px}}
 #printabilityNote{color:#e6bf8b;line-height:1.4;margin:7px 0 0;font-size:12px}
@@ -93,15 +92,30 @@
 #presetSettings .buttons+.field{margin-top:12px}
 #borderPreview{fill:#8dd4be;pointer-events:none}
 #borderPanel [hidden]{display:none}
-#meshDetails{margin-top:6px}
-#meshDetails summary{cursor:pointer}
+#meshDetails{margin:-9px 0 18px}
+#meshDetails summary:focus-visible,#presetSettings summary:focus-visible{outline:2px solid #e3bd84;outline-offset:-3px}
+#status,#meshAttemptLog{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.5}
+#meshAttemptLog{margin-top:8px}
 </style>
 <script type="importmap">{"imports":{"three":"https://esm.sh/three@0.180.0","three/addons/":"https://esm.sh/three@0.180.0/examples/jsm/"}}</script>
 <script src="https://cdn.jsdelivr.net/npm/clipper-lib@6.4.2/clipper.js"></script>
 <!-- Update the asset version when the polygon library interface changes. -->
 <script src="./polygon-geometry.js?v=stamp-border-1"></script>
 </head><body><header><div><h1>Leather Stamp Studio</h1><small>SVG → printable STL · designed for leather embossing dies</small></div><small>Browser-based · mm</small></header><main><aside>
-<div class="workflow" aria-label="Generate and export controls"><div class="step-hint">CREATE → CHECK → EXPORT</div><div class="buttons"><button id="build" title="Ctrl/⌘ + Enter">Generate 3D stamp</button><button class="secondary" id="export" disabled title="Generate and pass mesh checks before exporting">Download STL</button></div><small id="readyState" role="status" aria-live="polite">Sample artwork ready · Generate to preview</small><p id="printabilityNote" role="status" hidden></p></div>
+<div class="workflow" role="group" aria-label="Generate and export">
+<div class="buttons"><button id="build" title="Ctrl/⌘ + Enter">Generate 3D stamp</button><button class="secondary" id="export" disabled>Download STL</button></div>
+<div class="buttons project-actions"><button class="secondary" id="save" type="button">Save project JSON</button><button class="secondary" id="load" type="button">Load project JSON</button><input type="file" id="projectFile" accept=".json,application/json" hidden></div>
+<small id="readyState" role="status">Loading 3D libraries…</small>
+<p id="printabilityNote" role="status" hidden></p>
+</div>
+<details class="advanced-group" id="meshDetails">
+<summary><span>Technical mesh details</span></summary>
+<div class="advanced-body">
+<div id="status">Loading 3D libraries… Internet access is required when opening this HTML file.</div>
+<div id="meshAttemptLog" hidden></div>
+<p class="hint">Mesh checks detect open edges and other geometry errors. Inspect the sliced layers and test the stamp on a leather offcut before production use.</p>
+</div>
+</details>
 
 <section class="ui-section"><h2>01 / Your artwork</h2>
 <div class="field"><label for="file" class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Choose or drop SVG artwork"><strong>＋ Choose an SVG or drop it here</strong><small>Filled vector artwork works best</small><input id="file" type="file" accept=".svg,image/svg+xml"></label><div id="artworkName">Using included paw-print example</div></div>
@@ -113,6 +127,7 @@
 <li><strong>Choose the impression.</strong> Start with <b>Debossing (raised stamp)</b> to press the paw into the leather. Choose <b>Embossing (recessed die)</b> for a raised impression. Keep <b>Mirror artwork for stamping</b> on for artwork that should read correctly on the leather. If the SVG is already reversed, turn it off.</li>
 <li><strong>Review the design.</strong> Open <b>2D design</b> to check placement and holes. Turn on <b>Check small features</b> for estimated trouble spots. If you adjust thickness, use <b>Show thickness changes</b> to see what was added or removed.</li>
 <li><strong>Generate and inspect.</strong> Select <b>Generate 3D stamp</b>, check the 3D preview, and select <b>Download STL</b> once the mesh passes validation. In Bambu Studio, import in millimeters, verify the dimensions, and inspect the sliced layers for missing details or filled holes. Test the printed stamp on a leather offcut.</li>
+<li><strong>Keep your work.</strong> Use <b>Save project JSON</b> below Download STL to save your SVG and settings. Use <b>Load project JSON</b> to resume later.</li>
 </ol>
 </details>
 </section>
@@ -192,12 +207,10 @@
 </details>
 <div class="buttons"><button type="button" class="secondary" id="resetDefaults">Restore recommended settings</button></div>
 </div></details>
-<details class="advanced-group" id="projectSettings"><summary><span>Projects &amp; technical checks</span><small>Save, load, and validation notes</small></summary><div class="advanced-body">
-<div class="buttons"><button class="secondary" id="save">Save project JSON</button><button class="secondary" id="load">Load project JSON</button><input type="file" id="projectFile" accept=".json,application/json" hidden></div>
-<p class="hint">Projects include SVG artwork and all size and quality settings, stored locally in your downloaded JSON file.</p>
-<details id="presetSettings" class="nested-advanced">
-<summary>Local presets</summary>
-<p class="hint">Presets save settings in this browser. Applying one keeps your current artwork.</p>
+<details id="presetSettings" class="advanced-group">
+<summary><span>Saved presets</span><small>Reusable settings</small></summary>
+<div class="advanced-body">
+<p class="hint">A preset keeps your current artwork and applies reusable settings from this browser. Save project JSON to keep the SVG and all settings together.</p>
 <div class="field"><label for="presetName">Preset name</label><input id="presetName" type="text" maxlength="60"></div>
 <div class="buttons"><button id="savePreset" type="button" class="secondary">Save preset</button></div>
 <div class="field"><label for="presetList">Saved presets</label><select id="presetList" disabled><option value="">No saved presets</option></select></div>
@@ -206,8 +219,6 @@
 <button id="deletePreset" type="button" class="secondary" disabled>Delete preset</button>
 </div>
 <p class="hint" id="presetStatus" role="status"></p>
-</details>
-<h2>Final checks</h2><p class="hint">V3.1 validates boundary edges, non-manifold edges, inconsistent face orientation and degenerate triangles before enabling STL export. Mesh checks cannot guarantee slicer compatibility or print strength. Import STL into Bambu Studio as millimeters. Recessed dies may require a matching positive die to produce a raised leather impression.</p>
 </div></details>
 </aside><div id="stage"><div id="viewport"></div><div id="designView" hidden>
 <svg id="designCanvas" role="img" aria-label="Top view of the stamp artwork and base">
@@ -246,7 +257,7 @@
 <button id="viewRight" data-direction="1,0,0" type="button" title="Right view"><span>Right</span></button>
 </div>
 <button id="viewIso" class="secondary" data-direction="1,-1,1" type="button" title="Isometric view">Isometric</button>
-</div><div id="overlay"><b>3D preview</b><br>Drag to rotate · Scroll to zoom<br>Right-drag to pan</div><div id="status" aria-live="polite">Loading 3D libraries… Internet access is required when opening this HTML file.</div></div></main><div class="footer"><span id="buildVersion">Build version unavailable</span> · Test stamps on a leather offcut before production use.</div>
+</div><div id="overlay"><b>3D preview</b><br>Drag to rotate · Scroll to zoom<br>Right-drag to pan</div></div></main><div class="footer"><span id="buildVersion">Build version unavailable</span> · Test stamps on a leather offcut before production use.</div>
 <script>
 const buildVersion = document.getElementById('buildVersion');
 if (location.protocol === 'file:') {
@@ -278,9 +289,26 @@ function showPrintabilityNote(offset){
  if(note.textContent!==message)note.textContent=message;
  note.hidden=!message;
 }
-function progress(message,kind='pending'){if(kind==='error'||(kind==='pending'&&$('designView').hidden))showPrintabilityNote();$('readyState').textContent=message;$('readyState').className=kind==='ok'?'ready-ok':kind==='error'?'ready-err':'';}
+function progress(message,kind='pending'){
+ if(kind!=='ok'&&(kind==='error'||$('designView').hidden))showPrintabilityNote();
+ if(kind==='pending')setMeshAttemptLog('');
+ const ready=$('readyState');
+ if(ready.textContent!==message)ready.textContent=message;
+ ready.className=kind==='ok'?'ready-ok':kind==='error'?'ready-err':'';
+}
+function readyToGenerate(message=''){
+ const state=finalMesh?'Design changed — regenerate to download':'Ready to generate';
+ progress(message?message+' · '+state:state);
+}
+function showActionError(message,summary='Error — see details'){
+ $('export').disabled=true;
+ status.textContent=message;
+ status.className='bad';
+ setMeshAttemptLog('');
+ progress(summary,'error');
+}
 function fileLabel(name){$('artworkName').textContent=name?`Loaded: ${name}`:'Using included paw-print example';}
-function showLoadError(error){status.textContent='Could not load SVG: '+error.message;status.className='bad';$('export').disabled=true;progress('SVG load failed · Check the file','error');}
+function showLoadError(error){showActionError('Could not load SVG: '+error.message,'SVG load failed — see details');}
 
 const sample="<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<svg id=\"Layer_1\" data-name=\"Layer 1\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 788.67 741.6\">\n  <path d=\"M385.61,303.29c90.16-6.95,119.56,74.62,167.01,130.25,32.08,37.62,75.89,66.2,99.76,110.36,59.06,109.23-23.17,224.62-145.7,192-46.75-12.45-74.77-32.92-127.41-29.39-36.32,2.44-70.22,23.51-105.23,31.29-115.91,25.75-193.26-83.78-141.26-187.56,21.76-43.42,60.6-69.09,92.23-103.64,48.92-53.45,77-136.86,160.6-143.3Z\"/>\n  <path d=\"M245.53.57c120.87-13.01,174.39,198.98,76.58,258.21-68.82,41.67-132.65-33.43-149.34-94.74-15.86-58.26-1.39-155.49,72.76-163.47Z\"/>\n  <path d=\"M520.94.57c90.1-9.2,114.51,95.52,94.88,164.92-17.28,61.08-83.19,135.55-151.05,92.37C375.97,201.36,417.52,11.13,520.94.57Z\"/>\n  <path d=\"M68.65,198.82c95.67-9.54,167.1,137.13,105.93,209.21-54.79,64.56-137.52.65-162.87-59.18-23.21-54.76-15.66-142.78,56.94-150.03Z\"/>\n  <path d=\"M702.57,198.83c77.08-7.02,98.02,72.26,80.09,133.51-17.63,60.22-93.81,135-156.89,87.41-76.63-57.82-15.65-212.5,76.8-220.92Z\"/>\n</svg>";
 const sampleFilename='paw_print.svg';
@@ -295,21 +323,21 @@ const grid=new THREE.GridHelper(250,25,0x415268,0x2a3746);grid.rotation.x=Math.P
 modelGroup=new THREE.Group();scene.add(modelGroup);
 function resize(){const box=$('viewport').getBoundingClientRect();camera.aspect=box.width/Math.max(1,box.height);camera.updateProjectionMatrix();renderer.setSize(box.width,box.height,false)}new ResizeObserver(resize).observe($('viewport'));resize();
 function animate(){requestAnimationFrame(animate);if(!$("designView").hidden)return;controls.update();renderer.render(scene,camera)}animate();
-status.textContent='Ready. Sample artwork loaded; click Generate 3D stamp.';progress('Sample artwork ready · Generate to preview');
-}catch(e){status.textContent='Unable to initialize 3D preview: '+e.message;status.className='bad';throw e}
+status.textContent='Ready. Sample artwork loaded; click Generate 3D stamp.';readyToGenerate();
+}catch(e){showActionError('Unable to initialize 3D preview: '+e.message);throw e}
 async function acceptSVG(file){
  if(!file)return;
  try{
   if(!/\.svg$/i.test(file.name)&&file.type!=='image/svg+xml')throw Error('Choose an SVG (.svg) vector file.');
   const txt=await file.text();validateSvg(txt); // reject invalid files before replacing the current artwork
   svgText=txt;artworkFilename=file.name;fileLabel(file.name);status.textContent=`Loaded ${file.name}. Click Generate 3D stamp.`;
-  status.className='';$('export').disabled=true;progress('Artwork loaded · Generate to preview');
+  status.className='';$('export').disabled=true;readyToGenerate('Artwork loaded');
   refreshAspectFromSVG();if($('customArt').checked)setCustomFromFit();
   showDesignView(true);
  }catch(e){showLoadError(e)}
 }
 $('file').addEventListener('change',e=>acceptSVG(e.target.files?.[0]));
-$('demo').onclick=()=>{svgText=sample;artworkFilename=sampleFilename;$('file').value='';fileLabel(null);status.textContent='Paw print loaded. Click Generate 3D stamp.';status.className='';$('export').disabled=true;progress('Sample artwork ready · Generate to preview');refreshAspectFromSVG();if($('customArt').checked)setCustomFromFit();scheduleDesignPreview()};
+$('demo').onclick=()=>{svgText=sample;artworkFilename=sampleFilename;$('file').value='';fileLabel(null);status.textContent='Paw print loaded. Click Generate 3D stamp.';status.className='';$('export').disabled=true;readyToGenerate();refreshAspectFromSVG();if($('customArt').checked)setCustomFromFit();scheduleDesignPreview()};
 const dz=$('dropzone');dz.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();$('file').click()}});
 for(const eventName of ['dragenter','dragover'])dz.addEventListener(eventName,e=>{e.preventDefault();dz.classList.add('dragging')});
 for(const eventName of ['dragleave','drop'])dz.addEventListener(eventName,e=>{e.preventDefault();dz.classList.remove('dragging')});
@@ -447,7 +475,13 @@ for(const [changed,other] of [['artWidth','artHeight'],['artHeight','artWidth']]
    if($('customArt').checked)growBaseForExactArtwork();
  });
 }
-function markDirty(){if($('designView').hidden)showPrintabilityNote();scheduleDesignPreview();if(finalMesh){$('export').disabled=true;status.className='';status.textContent='Settings changed. Generate 3D stamp again before exporting.';progress('Changes pending · Regenerate before export');}}
+function markDirty(){
+ $('export').disabled=true;
+ status.className='';
+ status.textContent=finalMesh?'Settings changed. Generate 3D stamp again before exporting.':'Click Generate 3D stamp to check the current design.';
+ readyToGenerate();
+ scheduleDesignPreview();
+}
 for(const el of document.querySelectorAll('aside input, aside select')){
  if(el.type!=='file'&&!el.closest('#presetSettings'))el.addEventListener(['number','range'].includes(el.type)?'input':'change',markDirty);
 }
@@ -1209,18 +1243,13 @@ $('viewShortcut').addEventListener('click',event=>{
  controls.enableDamping=damping;
 });
 
-function appendMeshDetails(log){
- const details=document.createElement('details');
- details.id='meshDetails';
- const summary=document.createElement('summary');
- summary.textContent='Technical mesh details';
- const body=document.createElement('div');
- body.textContent=log;
- details.append(summary,body);
- status.append(details);
+function setMeshAttemptLog(log){
+ const attempts=$('meshAttemptLog');
+ attempts.textContent=log;
+ attempts.hidden=!log;
 }
 
-function build(){try{$('build').disabled=true;$('export').disabled=true;status.className='';status.textContent='Preparing SVG geometry…';progress('Generating mesh · Please wait');
+function build(){try{
  const base=getNumber('base'),depth=getNumber('depth');
  if(base<2||base>25)throw Error('Base thickness must be between 2 and 25 mm.');
  if(depth<=0||depth>5)throw Error('Relief/cavity depth must be greater than 0 and at most 5 mm.');
@@ -1284,8 +1313,8 @@ function build(){try{$('build').disabled=true;$('export').disabled=true;status.c
  if(!geometry){
    if(finalMesh){modelGroup.remove(finalMesh);finalMesh.geometry.dispose();finalMesh.material.dispose();finalMesh=null}
    status.textContent='No valid mesh found. Export blocked.\nTry Sharp, smaller edge size, or simplifying very narrow features.';
-   appendMeshDetails([...attemptLog,...faultDetails].join('\n'));
-   status.className='bad';progress('Mesh invalid · Try smaller edge size','error');return;
+   setMeshAttemptLog([...attemptLog,...faultDetails].join('\n'));
+   status.className='bad';progress('Error — see details','error');return;
  }
  const issues=report.boundary+report.nonmanifold+report.degenerate+report.winding;
  if(finalMesh){modelGroup.remove(finalMesh);finalMesh.geometry.dispose();finalMesh.material.dispose()}
@@ -1300,10 +1329,10 @@ function build(){try{$('build').disabled=true;$('export').disabled=true;status.c
      status.textContent+=` · Applied border edge: ${appliedBorderBevel.toFixed(3)} mm${reduced}`;
    }
  }
- appendMeshDetails(attemptLog.join('\n'));
- status.className=issues?'bad':'good';$('export').disabled=!!issues;progress(issues?'Mesh invalid · Export blocked':'Mesh validated · STL ready to download',issues?'error':'ok');
+ setMeshAttemptLog(attemptLog.join('\n'));
+ status.className=issues?'bad':'good';$('export').disabled=!!issues;progress(issues?'Error — see details':'Ready to export',issues?'error':'ok');
  showPrintabilityNote(design.offset);
- }catch(e){status.textContent='Generation failed: '+e.message;status.className='bad';progress('Generation failed · Review the details','error');console.error(e)}finally{$('build').disabled=false}}
+ }catch(e){showActionError('Generation failed: '+e.message);console.error(e)}finally{$('build').disabled=false}}
 
 function syncSimpleUI(){
  const exact=$('customArt').checked;
@@ -1322,7 +1351,7 @@ $('resetDefaults').onclick=()=>{
  for(const [id,value] of Object.entries(defaults)){$(id).type==='checkbox'?$(id).checked=value:$(id).value=value;}
  $('fitArt').checked=true;$('customArt').checked=false;syncSizingUI();syncSimpleUI();syncBorderUI(defaults.borderShape);$('designOffsetSlider').value=$('designOffset').value;
  $('export').disabled=true;status.className='';status.textContent='Recommended settings restored. Click Generate 3D stamp.';
- progress('Settings restored · Generate to preview');
+ readyToGenerate('Settings restored');
  scheduleDesignPreview();
 };
 syncSimpleUI();
@@ -1359,7 +1388,7 @@ function settingsLoaded(message){
  $('export').disabled=true;
  status.className='';
  status.textContent=message+'. Click Generate 3D stamp.';
- progress(message+' · Generate to preview');
+ readyToGenerate(message);
  scheduleDesignPreview();
 }
 $('save').onclick=()=>download(
@@ -1383,9 +1412,7 @@ $('projectFile').onchange=async e=>{
    if($('borderEnabled').checked)$('borderPanel').open=true;
    settingsLoaded('Project loaded');
  }catch(err){
-   status.textContent='Project load failed: '+err.message;
-   status.className='bad';
-   progress('Project load failed','error');
+   showActionError('Project load failed: '+err.message,'Project load failed — see details');
  }finally{e.target.value=''}
 };
 
@@ -1440,7 +1467,15 @@ withPresets(showPresets);
 window.addEventListener('storage',event=>{
  if(event.key===presetKey||event.key===null)withPresets(presets=>showPresets(presets,$('presetList').value));
 });
-$('build').onclick=()=>{showDesignView(false);setTimeout(build,35)};
+$('build').onclick=()=>{
+ $('build').disabled=true;
+ $('export').disabled=true;
+ status.className='';
+ status.textContent='Preparing SVG geometry…';
+ progress('Generating…');
+ showDesignView(false);
+ setTimeout(build,35);
+};
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter'&&!e.repeat){e.preventDefault();if(!$('build').disabled)$('build').click()}});
 $('resetView').onclick=()=>{if(!finalMesh){controls.target.set(0,0,5);camera.position.set(75,-85,95);controls.update();return}const bounds=new THREE.Box3().setFromObject(finalMesh),center=bounds.getCenter(new THREE.Vector3()),span=bounds.getSize(new THREE.Vector3()),radius=Math.max(span.x,span.y,span.z,15);controls.target.copy(center);camera.position.copy(center).add(new THREE.Vector3(radius*1.5,-radius*1.7,radius*1.6));controls.update()};
 function stlFilename(){
@@ -1455,5 +1490,5 @@ function stlFilename(){
  const artworkName=[...stem].slice(0,50).join('')||'project_artwork';
  return `${artworkName}_${impression}_${edge}_${shape}.stl`;
 }
-$('export').onclick=()=>{if(!finalMesh||$('export').disabled)return;try{const exporter=new STLExporter();const output=exporter.parse(finalMesh,{binary:true});download(output,stlFilename(),'model/stl')}catch(e){status.textContent='STL export failed: '+e.message;status.className='bad'}};
+$('export').onclick=()=>{if(!finalMesh||$('export').disabled)return;try{const exporter=new STLExporter();const output=exporter.parse(finalMesh,{binary:true});download(output,stlFilename(),'model/stl')}catch(e){showActionError('STL export failed: '+e.message)}};
 </script></body></html>

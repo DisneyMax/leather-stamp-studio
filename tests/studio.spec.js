@@ -52,7 +52,7 @@ async function load(page, svg, settings) {
 
 async function generate(page) {
   await page.getByRole('button', { name: 'Generate 3D stamp' }).click();
-  await expect(page.locator('#readyState')).toHaveText(/Mesh validated|Mesh invalid|Generation failed/);
+  await expect(page.locator('#readyState')).toHaveText('Ready to export');
   expect(await page.locator('#status').textContent()).toContain('Basic manifold checks passed. Export enabled.');
 }
 
@@ -163,7 +163,6 @@ test('V3.1 project round-trip and V3.0 project missing the adjustment', async ({
   await load(page, compound, { designOffset: -0.37, edge: 'sharp', artSizing: 'custom', artWidth: 25, artHeight: 24 });
   await expect(page.locator('#designOffsetSlider')).toHaveValue('-0.35');
   await expect(page.locator('#artWidth')).toHaveValue('25');
-  await page.locator('#projectSettings > summary').click();
   const saved = JSON.parse(await download(page, '#save'));
   expect(saved).toMatchObject({
     format: 'LeatherStampStudio', version: 2, svg: compound,
@@ -181,6 +180,46 @@ test('V3.1 project round-trip and V3.0 project missing the adjustment', async ({
   await generate(page);
 });
 
+for (const viewport of [{ width: 1280, height: 800 }, { width: 390, height: 650 }]) {
+  test(`project and export workflow at ${viewport.width}px`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    const ready = page.locator('#readyState');
+    const save = page.getByRole('button', { name: 'Save project JSON' });
+    const loadProject = page.getByRole('button', { name: 'Load project JSON' });
+    const exportSTL = page.getByRole('button', { name: 'Download STL' });
+    const details = page.locator('#meshDetails');
+    await expect(ready).toHaveText('Ready to generate');
+    await expect(exportSTL).toBeDisabled();
+    await expect(save).toBeInViewport();
+    await expect(loadProject).toBeInViewport();
+    expect((await save.boundingBox()).y).toBeGreaterThan((await exportSTL.boundingBox()).y);
+    await save.focus();
+    await page.keyboard.press('Tab');
+    await expect(loadProject).toBeFocused();
+
+    await load(page, compound);
+    await expect(page.locator('#designView')).toBeVisible();
+    await generate(page);
+    await expect(page.locator('#designView')).toBeHidden();
+    await expect(details).toHaveJSProperty('open', false);
+    await details.locator('summary').click();
+    await expect(page.locator('#status')).toBeVisible();
+    await details.locator('summary').click();
+    expectClosedMesh(parseSTL(await download(page, '#export')));
+
+    await page.locator('#width').fill('55');
+    await expect(page.locator('#readyState')).toHaveText('Design changed — regenerate to download');
+    await expect(exportSTL).toBeDisabled();
+    const project = await download(page, '#save');
+    const [chooser] = await Promise.all([page.waitForEvent('filechooser'), loadProject.click()]);
+    await chooser.setFiles({ name: 'saved.json', mimeType: 'application/json', buffer: project });
+    await expect(page.locator('#readyState')).toContainText('Project loaded');
+    await expect(page.locator('#width')).toHaveValue('55');
+    await expect(exportSTL).toBeDisabled();
+    await generate(page);
+  });
+}
+
 test('input edits and failed builds block a previously valid STL', async ({ page }) => {
   await load(page, artwork('<path d="M0 0H32V0.6H0Z"/>'), { edge: 'sharp' });
   await generate(page);
@@ -188,6 +227,7 @@ test('input edits and failed builds block a previously valid STL', async ({ page
   await page.locator('#designOffset').fill('-0.6');
   await expect(page.locator('#export')).toBeDisabled();
   await page.locator('#build').click();
+  await expect(page.locator('#readyState')).toHaveText('Error — see details');
   await expect(page.locator('#status')).toContainText('from -0.50 to +0.50 mm');
   await expect(page.locator('#export')).toBeDisabled();
   await page.locator('#designOffset').fill('-0.5');
@@ -499,7 +539,6 @@ test('numeric artwork placement updates the 2D view, STL, and saved project', as
   expect(surfaceHeight(triangles, 3, -1)).toBe(6);
 
   await page.getByRole('button', { name: '2D design' }).click();
-  await page.locator('#projectSettings > summary').click();
   const saved = JSON.parse(await download(page, '#save'));
   expect(saved.settings).toMatchObject({ artX: '5', artY: '3', artRotation: '90' });
   await page.getByRole('button', { name: 'Center artwork' }).click();
@@ -558,7 +597,6 @@ test('dragging snaps to center, updates numeric offsets and saves the exported p
   const x = await page.locator('#artX').inputValue();
   const positioned = await design.getAttribute('d');
 
-  await page.locator('#projectSettings > summary').click();
   const saved = JSON.parse(await download(page, '#save'));
   expect(saved.settings).toMatchObject({ artX: x, artY: '0' });
   await page.locator('#artX').fill('1');
@@ -620,10 +658,7 @@ test('minimum feature check highlights thin artwork and small holes without chan
 });
 
 test('local presets survive reload and apply settings to the current SVG', async ({ page }) => {
-  const openPresets = async () => {
-    await page.locator('#projectSettings > summary').click();
-    await page.getByText('Local presets', { exact: true }).click();
-  };
+  const openPresets = () => page.locator('#presetSettings > summary').click();
   const presetStatus = page.locator('#presetStatus');
   const name = page.getByRole('textbox', { name: 'Preset name' });
   const list = page.getByRole('combobox', { name: 'Saved presets' });
@@ -738,7 +773,6 @@ test('sharp border shares a valid solid with beveled artwork and persists in a p
   const geometry = parseSTL(await download(page, '#export'));
   expectClosedMesh(geometry);
   expect(surfaceHeight(geometry, 15, 0)).toBe(7.5);
-  await page.locator('#projectSettings > summary').click();
   const saved = JSON.parse(await download(page, '#save'));
   expect(saved.settings).toMatchObject({ borderEnabled: true, borderPlacement: 'artwork', borderShape: 'rect', borderGap: '2', borderThickness: '1' });
   await page.locator('#borderGap').fill('20');
@@ -830,7 +864,6 @@ test('STL filenames use the SVG name and effective stamp settings', async ({ pag
   await generate(page);
   await expectDownloadName('Dacha_Craft_debossing_rounded_rounded_rectangle.stl');
 
-  await page.locator('#projectSettings > summary').click();
   const saved = JSON.parse(await download(page, '#save'));
   expect(saved.artworkFilename).toBe('Dacha Craft.svg');
   await page.locator('#projectFile').setInputFiles({
@@ -873,7 +906,6 @@ test('custom border height updates the preview and STL while preserving artwork 
   expect(surfaceHeight(geometry, 15, 0)).toBe(8.25);
   expect(surfaceHeight(geometry, 14, 0)).toBe(6);
 
-  await page.locator('#projectSettings > summary').click();
   const project = JSON.parse(await download(page, '#save'));
   expect(project.settings).toMatchObject({ borderHeightMode: 'custom', borderHeight: '2.25' });
   await height.fill('0.1');
@@ -943,7 +975,6 @@ test('border edge recovery keeps artwork bevel, saves the profile, and rejects a
   expectClosedMesh(triangles);
   expect(new Set(triangles.flat().filter(([x, y]) => Math.abs(x) < 13 && Math.abs(y) < 11).map(point => point[2])).size).toBeGreaterThan(2);
 
-  await page.locator('#projectSettings > summary').click();
   const saved = JSON.parse(await download(page, '#save'));
   expect(saved.settings).toMatchObject({ borderEdge: 'round', borderEdgeSize: '1.5' });
   await load(page, saved.svg, saved.settings);
