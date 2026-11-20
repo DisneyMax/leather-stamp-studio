@@ -137,7 +137,7 @@
 <summary><span>Add border</span></summary>
 <div class="advanced-body">
 <div class="check"><input id="borderEnabled" type="checkbox"><label for="borderEnabled">Add a printable border</label></div>
-<p id="borderModeHelp" class="hint">Borders use sharp edges and the same height as raised artwork.</p>
+<p id="borderModeHelp" class="hint">Borders use sharp edges and default to the artwork height.</p>
 <div id="borderFields" hidden>
 <div class="pair">
 <div class="field"><label for="borderPlacement">Placement</label><select id="borderPlacement"><option value="artwork">Fit around artwork</option><option value="base">Follow base</option></select></div>
@@ -146,6 +146,10 @@
 <div class="pair">
 <div class="field"><label for="borderThickness">Border thickness (mm)</label><input type="number" id="borderThickness" min="0.30" max="5" step="any" value="1" required></div>
 <div class="field"><label for="borderGap" id="borderGapLabel">Gap from artwork (mm)</label><input type="number" id="borderGap" min="0" max="20" step="any" value="2" required></div>
+</div>
+<div class="pair" id="borderHeightControls" hidden>
+<div class="field"><label for="borderHeightMode">Border height</label><select id="borderHeightMode"><option value="same">Same as artwork</option><option value="custom">Custom height</option></select></div>
+<div class="field" id="borderCustomHeight" hidden><label for="borderHeight">Custom border height (mm)</label><input id="borderHeight" type="number" min="0.2" max="5" step="any" value="1.5" required></div>
 </div>
 <p id="borderHelp" class="hint"></p>
 </div>
@@ -733,7 +737,7 @@ function meshFaultDetails(geom,limit=8){
  const fmt=v=>v.map(x=>x.toFixed(4)).join(',');
  return bad.slice(0,limit).map(e=>`${e.faces.length} face(s): (${fmt(coords[e.a])}) - (${fmt(coords[e.b])})`).concat(degens.slice(0,limit).map(i=>`degenerate face ${i}`)).join('\n');
 }
-function buildMesh({baseTree,inside,artwork,border},base,depth,raised,edge,bevel){
+function buildMesh({baseTree,inside,artwork,border,borderHeight},base,depth,raised,edge,bevel){
  const C=window.ClipperLib;
  // Partition the top of the base against the union of all relief.
  // Separate sharp border walls share this same base, with no bottom cap.
@@ -835,9 +839,17 @@ function buildMesh({baseTree,inside,artwork,border},base,depth,raised,edge,bevel
    cap(outside,base,true);
    const chamfer=edge==='sharp'?0:Math.min(bevel,depth*.45);
    const zTop=base+depth;
-   if(chamfer<0.00001){walls(relief,base,zTop);cap(relief,zTop,true)}
-   else{
-     if(border){walls(border,base,zTop);cap(border,zTop,true)}
+   const separateBorder=border&&(chamfer>=0.00001||borderHeight!==depth);
+   if(separateBorder){
+     const borderTop=base+borderHeight;
+     walls(border,base,borderTop);
+     cap(border,borderTop,true);
+   }
+   if(chamfer<0.00001){
+     const sharpArtwork=separateBorder?inside:relief;
+     walls(sharpArtwork,base,zTop);
+     cap(sharpArtwork,zTop,true);
+   }else{
      const steps=edge==='round'?8:6;
      const maxChamfer=Math.min(bevel,depth*.45);
      const zStart=zTop-maxChamfer;
@@ -905,9 +917,16 @@ function placeArtworkPaths(loops,x,y,rotation){
  })));
 }
 
-const defaultBorder={borderEnabled:false,borderPlacement:'artwork',borderShape:'roundrect',borderThickness:1,borderGap:2};
+const defaultBorder={borderEnabled:false,borderPlacement:'artwork',borderShape:'roundrect',borderThickness:1,borderGap:2,borderHeightMode:'same',borderHeight:1.5};
 const artworkBorderShapes=[['roundrect','Rounded rectangle'],['rect','Rectangle'],['ellipse','Circle / ellipse'],['contour','SVG contour']];
+function syncBorderHeightUI(){
+ const visible=$('borderEnabled').checked&&$('mode').value==='raised';
+ $('borderHeightControls').hidden=!visible;
+ $('borderCustomHeight').hidden=$('borderHeightMode').value!=='custom';
+}
+$('borderHeightMode').addEventListener('change',syncBorderHeightUI);
 function syncBorderUI(shape){
+ syncBorderHeightUI();
  const enabled=$('borderEnabled').checked;
  const followsBase=$('borderPlacement').value==='base';
  const options=followsBase?[['match','Match base']]:artworkBorderShapes;
@@ -928,14 +947,14 @@ function syncBorderUI(shape){
      :'Measure from the artwork to the inside of the border.';
  $('borderModeHelp').textContent=$('mode').value==='recessed'
    ?'Borders are available for Debossing (raised stamp). Turn off the border or change the impression to continue.'
-   :'Borders use sharp edges and the same height as raised artwork.';
+   :'Borders use sharp edges and default to the artwork height.';
 }
 $('borderPlacement').addEventListener('change',()=>syncBorderUI());
 for(const id of ['borderEnabled','borderShape','mode'])$(id).addEventListener('change',()=>syncBorderUI($('borderShape').value));
 syncBorderUI();
 
 function prepareBorder(baseTree,inside){
- if(!$('borderEnabled').checked)return null;
+ if(!$('borderEnabled').checked)return {};
  if(typeof stampBorder!=='function')throw Error('The border library is out of date. Reload the page and try again.');
  if($('mode').value!=='raised')throw Error('Borders require Debossing (raised stamp). Turn off the border or change the impression.');
  const placement=$('borderPlacement').value,shape=$('borderShape').value;
@@ -944,9 +963,16 @@ function prepareBorder(baseTree,inside){
  }
  if(!$('borderThickness').validity.valid)throw Error('Enter a border thickness from 0.30 to 5.00 mm.');
  if(!$('borderGap').validity.valid)throw Error('Enter a border gap or inset from 0 to 20 mm.');
- return stampBorder(baseTree,inside,{
-   placement,shape,gap:getNumber('borderGap'),thickness:getNumber('borderThickness'),sharp:$('edge').value==='sharp'
- });
+ const heightMode=$('borderHeightMode').value;
+ if(heightMode!=='same'&&heightMode!=='custom')throw Error('Select Same as artwork or Custom height for the border.');
+ if(heightMode==='custom'&&!$('borderHeight').validity.valid)throw Error('Enter a custom border height from 0.20 to 5.00 mm.');
+ const relief=getNumber('depth'),gap=getNumber('borderGap');
+ const borderHeight=heightMode==='same'?relief:getNumber('borderHeight');
+ if(placement==='artwork'&&gap===0&&borderHeight!==relief){
+   throw Error('A zero artwork gap requires the border and artwork to have the same height. Increase the gap or select Same as artwork.');
+ }
+ const border=stampBorder(baseTree,inside,{placement,shape,gap,thickness:getNumber('borderThickness'),sharp:$('edge').value==='sharp'});
+ return {border,borderHeight};
 }
 
 function prepareDesign(compareOffset=false,preview=false){
@@ -997,10 +1023,10 @@ function prepareDesign(compareOffset=false,preview=false){
      removed:before.length?paths(region(C.ClipType.ctDifference,before,artwork)):[]
    };
  }
- let border,borderError;
- try{border=prepareBorder(baseTree,inside)}
+ let border,borderHeight,borderError;
+ try{({border,borderHeight}=prepareBorder(baseTree,inside))}
  catch(error){if(!preview)throw error;borderError=error.message}
- return {baseTree,inside,artwork,artP,w,h,kind,shapes,raw,optimized,effectiveTolerance,offsetMm,offset,changes,border,borderError};
+ return {baseTree,inside,artwork,artP,w,h,kind,shapes,raw,optimized,effectiveTolerance,offsetMm,offset,changes,border,borderHeight,borderError};
 }
 
 function svgPath(loops){
@@ -1048,7 +1074,7 @@ $('minimumFeature').addEventListener('input',scheduleDesignPreview);
 let dragSource, artworkDrag;
 function renderDesignPreview(){
  try{
-   const {baseTree,artwork,artP,raw,offset,changes,border,borderError}=prepareDesign($('showChanges').checked,true);
+   const {baseTree,artwork,artP,raw,offset,changes,border,borderHeight,borderError}=prepareDesign($('showChanges').checked,true);
    $('borderPreview').setAttribute('d',svgPath(border?paths(border):[]));
    drawThicknessChanges(changes,true);
    drawFeatureCheck(artwork);
@@ -1069,7 +1095,7 @@ function renderDesignPreview(){
    renderedSVG=svgText;
    $('designView').classList.remove('show-last-design');
    const type=$('mode').value==='raised'?'Raised artwork':'Recessed artwork';
-   $('designStatus').textContent=borderError??`${type} in gold · Base in blue-gray${border?' · Border in green':''} · Drag artwork to move`;
+   $('designStatus').textContent=borderError??`${type} in gold · Base in blue-gray${border?` · Border in green (${borderHeight} mm high)`:''} · Drag artwork to move`;
  }catch(error){
    $('borderPreview').removeAttribute('d');
    drawThicknessChanges(undefined,false);
@@ -1227,7 +1253,7 @@ function build(){try{$('build').disabled=true;$('export').disabled=true;status.c
  finalMesh=new THREE.Mesh(geometry,new THREE.MeshStandardMaterial({color:0xc7a27c,metalness:.12,roughness:.67,side:THREE.DoubleSide}));modelGroup.add(finalMesh);
  const bounds=new THREE.Box3().setFromObject(finalMesh),center=bounds.getCenter(new THREE.Vector3()),span=bounds.getSize(new THREE.Vector3()),radius=Math.max(span.x,span.y,span.z,15);controls.target.copy(center);camera.position.copy(center).add(new THREE.Vector3(radius*1.5,-radius*1.7,radius*1.6));camera.near=.1;camera.far=Math.max(2000,radius*20);camera.updateProjectionMatrix();controls.update();
  status.textContent=`Artwork: ${raw.artW.toFixed(2)} × ${raw.artH.toFixed(2)} mm · Base: ${w.toFixed(2)} × ${h.toFixed(2)} mm\n${raised?'Debossing (raised stamp)':'Embossing (recessed die)'} · ${kind} base · ${shapes.length} SVG shapes / ${optimized.vertices.toLocaleString()} optimized vertices · ${effectiveTolerance.toFixed(3)} mm tolerance · ${report.triangles.toLocaleString()} triangles\nMesh check: ${report.boundary} boundary edges, ${report.nonmanifold} non-manifold edges, ${report.degenerate} degenerate triangles, ${report.winding} winding conflicts. ${issues?'EXPORT BLOCKED: invalid mesh.':'Basic manifold checks passed. Export enabled.'}\nRequested edge: ${bevel.toFixed(3)} mm · Applied edge: ${appliedBevel.toFixed(3)} mm${appliedBevel<bevel?" (automatically reduced for mesh integrity)":""}.\nDesign thickness adjustment: ${offsetMm>=0?'+':''}${offsetMm.toFixed(2)} mm.`;
- if(design.border)status.textContent+='\nBorder: sharp, same height as artwork.';
+ if(design.border)status.textContent+=`\nSharp border · ${design.borderHeight} mm high`;
  appendMeshDetails(attemptLog.join('\n'));
  status.className=issues?'bad':'good';$('export').disabled=!!issues;progress(issues?'Mesh invalid · Export blocked':'Mesh validated · STL ready to download',issues?'error':'ok');
  showPrintabilityNote(design.offset);
