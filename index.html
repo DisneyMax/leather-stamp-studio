@@ -98,7 +98,8 @@
 </style>
 <script type="importmap">{"imports":{"three":"https://esm.sh/three@0.180.0","three/addons/":"https://esm.sh/three@0.180.0/examples/jsm/"}}</script>
 <script src="https://cdn.jsdelivr.net/npm/clipper-lib@6.4.2/clipper.js"></script>
-<script src="./polygon-geometry.js"></script>
+<!-- Update the asset version when the polygon library interface changes. -->
+<script src="./polygon-geometry.js?v=stamp-border-1"></script>
 </head><body><header><div><h1>Leather Stamp Studio <small> / V3.2 design preview</small></h1><small>SVG → printable STL · designed for leather embossing dies</small></div><small>Browser-based · mm</small></header><main><aside>
 <div class="workflow" aria-label="Generate and export controls"><div class="step-hint">CREATE → CHECK → EXPORT</div><div class="buttons"><button id="build" title="Ctrl/⌘ + Enter">Generate 3D stamp</button><button class="secondary" id="export" disabled title="Generate and pass mesh checks before exporting">Download STL</button></div><small id="readyState" role="status" aria-live="polite">Sample artwork ready · Generate to preview</small><p id="printabilityNote" role="status" hidden></p></div>
 
@@ -934,6 +935,7 @@ syncBorderUI();
 
 function prepareBorder(baseTree,inside){
  if(!$('borderEnabled').checked)return null;
+ if(typeof stampBorder!=='function')throw Error('The border library is out of date. Reload the page and try again.');
  if($('mode').value!=='raised')throw Error('Borders require Debossing (raised stamp). Turn off the border or change the impression.');
  const placement=$('borderPlacement').value,shape=$('borderShape').value;
  if(!((placement==='base'&&shape==='match')||(placement==='artwork'&&artworkBorderShapes.some(([value])=>value===shape)))){

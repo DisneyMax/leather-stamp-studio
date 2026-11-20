@@ -9,7 +9,7 @@ const compound = artwork('<path fill-rule="evenodd" d="M0 0H32V32H0Z M4 4H28V28H
 test.beforeEach(async ({ page }) => {
   // Exercise the production HTML and its pinned libraries without live CDN requests.
   await page.route('http://studio.test/', route => route.fulfill({ path: path.join(root, 'index.html') }));
-  await page.route('http://studio.test/polygon-geometry.js', route =>
+  await page.route('http://studio.test/polygon-geometry.js?v=stamp-border-1', route =>
     route.fulfill({ path: path.join(root, 'polygon-geometry.js'), contentType: 'text/javascript' }));
   await page.route('https://cdn.jsdelivr.net/npm/clipper-lib@6.4.2/clipper.js', route =>
     route.fulfill({ path: require.resolve('clipper-lib') }));
@@ -784,4 +784,16 @@ test('a flush Follow base border works on a narrow screen', async ({ page }) => 
   expectClosedMesh(triangles);
   expect(surfaceHeight(triangles, 19.5, 0)).toBe(7.5);
   await expect(page.locator('#meshDetails')).toHaveJSProperty('open', false);
+});
+
+
+test('a stale polygon library blocks bordered export with a reload message', async ({ page }) => {
+  const source = await readFile(path.join(root, 'polygon-geometry.js'), 'utf8');
+  await page.route('http://studio.test/polygon-geometry.js?v=stamp-border-1', route =>
+    route.fulfill({ body: source.replace(', stampBorder };', ' };'), contentType: 'text/javascript' }));
+  await page.reload();
+  await load(page, smallBorderArt, { ...borderSettings, borderShape: 'rect' });
+  await page.locator('#build').click();
+  await expect(page.locator('#status')).toContainText('The border library is out of date. Reload the page');
+  await expect(page.locator('#export')).toBeDisabled();
 });
