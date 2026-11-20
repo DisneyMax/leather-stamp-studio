@@ -23,7 +23,7 @@
 #artPlacement summary:focus-visible{outline:2px solid #e3bd84;outline-offset:-3px}
 #artPlacement .advanced-body{max-width:500px}
 #artPlacement .pair{grid-template-columns:repeat(2,minmax(0,1fr))}
-#previewMessage{margin:0}
+#previewMessage,#featureHelp{margin:0}
 #previewMessage:not([hidden])+div{margin-top:4px}
 @media(max-width:850px){#stageTools button,#artPlacement button,#artPlacement>summary{min-height:44px}}
 #readyState{font-weight:650;color:#e6bf8b}.ready-ok{color:#9cdbb0!important}.ready-err{color:#ffb0a4!important}
@@ -102,6 +102,14 @@
 #presetSettings .buttons+.field{margin-top:12px}
 #borderPreview{fill:#8dd4be;pointer-events:none}
 #borderPanel [hidden]{display:none}
+.size-options{border:0;padding:0;margin:0 0 10px;min-width:0}
+.size-options legend,.size-heading{font-size:13px;font-weight:650;color:#d8e2eb;margin:0 0 8px;padding:0}
+.size-heading{margin-top:16px;padding-top:12px;border-top:1px solid #394655}
+#borderPanel .border-toggle{display:flex;align-items:center;gap:9px;margin:0;padding:12px 15px;min-height:44px;font-size:14px;font-weight:650;cursor:pointer}
+#borderPanel .border-toggle input{margin:0}
+#borderModeHelp{margin-top:0}
+#borderHelp{margin:0 0 12px}
+#firstStampGuide summary:focus-visible,.size-options label:focus-within{outline:2px solid #e3bd84;outline-offset:2px}
 #meshDetails{margin:-9px 0 18px}
 #meshDetails summary:focus-visible,#presetSettings summary:focus-visible{outline:2px solid #e3bd84;outline-offset:-3px}
 #status,#meshAttemptLog{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.5}
@@ -130,38 +138,31 @@
 <section class="ui-section"><h2>01 / Your artwork</h2>
 <div class="field"><label for="file" class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Choose or drop SVG artwork"><strong>＋ Choose an SVG or drop it here</strong><small>Filled vector artwork works best</small><input id="file" type="file" accept=".svg,image/svg+xml"></label><div id="artworkName">Using included paw-print example</div></div>
 <button class="secondary quiet-button" id="demo">Use example paw print</button>
-<details id="firstStampGuide" class="nested-advanced">
-<summary>First stamp guide</summary>
-<ol class="hint">
-<li><strong>Start with the paw print.</strong> Choose <b>Use example paw print</b> and leave <b>Fit to base</b> selected. For your own SVG, use filled shapes and convert text and strokes to outlines in your vector editor.</li>
-<li><strong>Choose the impression.</strong> Start with <b>Debossing (raised stamp)</b> to press the paw into the leather. Choose <b>Embossing (recessed die)</b> for a raised impression. Keep <b>Mirror artwork for stamping</b> on for artwork that should read correctly on the leather. If the SVG is already reversed, turn it off.</li>
-<li><strong>Review the design.</strong> Open <b>2D Design</b> to check placement and holes. Turn on <b>Check small features</b> for estimated trouble spots. If you adjust thickness, use <b>Show thickness changes</b> to see what was added or removed.</li>
-<li><strong>Generate and inspect.</strong> Select <b>Generate 3D stamp</b>, check the 3D preview, and select <b>Download STL</b> once the mesh passes validation. In Bambu Studio, import in millimeters, verify the dimensions, and inspect the sliced layers for missing details or filled holes. Test the printed stamp on a leather offcut.</li>
-<li><strong>Keep your work.</strong> Use <b>Save project JSON</b> below Download STL to save your SVG and settings. Use <b>Load project JSON</b> to resume later.</li>
-</ol>
-</details>
 </section>
 <section class="ui-section"><h2>02 / Stamp setup</h2>
-<div class="field"><label for="mode">Impression</label><select id="mode"><option value="raised">Debossing (raised stamp)</option><option value="recessed">Embossing (recessed die)</option></select></div>
-<div class="check"><input id="mirror" type="checkbox" checked><label for="mirror">Mirror artwork for stamping</label></div>
+<div class="field"><label for="mode">Impression</label><select id="mode" aria-describedby="impressionHelp"><option value="raised">Debossing (raised stamp)</option><option value="recessed">Embossing (recessed die)</option></select><p class="hint" id="impressionHelp"></p></div>
+<div class="check"><input id="mirror" aria-describedby="mirrorHelp" type="checkbox" checked><label for="mirror">Mirror artwork for stamping</label></div>
+<p class="hint" id="mirrorHelp">Reverses the stamp face so text reads correctly on leather. Turn it off if your SVG is already reversed.</p>
 <div class="field"><label for="edge">Artwork edge</label><select id="edge" aria-describedby="edgeHelp"><option value="sharp" selected>Sharp</option><option value="chamfer">Chamfered</option><option value="round">Rounded</option></select></div>
 <p class="hint" id="edgeHelp"></p>
 </section>
 <section class="ui-section"><h2>03 / Size</h2>
-<div class="field"><label>Artwork sizing</label><div class="segmented"><label><input type="radio" name="artSizing" id="fitArt" value="fit" checked> Fit to base</label><label><input type="radio" name="artSizing" id="customArt" value="custom"> Exact size</label></div></div>
+<fieldset class="size-options"><legend>Artwork dimensions</legend><div class="segmented"><label><input type="radio" name="artSizing" id="fitArt" value="fit" checked> Fit to base</label><label><input type="radio" name="artSizing" id="customArt" value="custom"> Exact size</label></div>
 <div id="exactSizeFields" class="exact-fields">
 <div class="pair"><div class="field"><label for="artWidth">Artwork width (mm)</label><input id="artWidth" type="number" min="0.5" max="200" step="0.5" value="32" disabled></div><div class="field"><label for="artHeight">Artwork height (mm)</label><input id="artHeight" type="number" min="0.5" max="200" step="0.5" value="32" disabled></div></div>
 <div class="check"><input id="lockAspect" type="checkbox" checked><label for="lockAspect">Keep original proportions</label></div>
-<p class="hint">The base grows as needed when you edit the artwork size.</p>
+<p class="hint">Editing the exact artwork size can grow the backing plate to keep the artwork margin.</p>
 </div>
+</fieldset>
+<h3 class="size-heading">Backing-plate dimensions</h3>
 <div class="pair"><div class="field"><label for="width">Base width (mm)</label><input id="width" type="number" min="10" max="200" step="1" value="40"></div><div class="field"><label for="height">Base height (mm)</label><input id="height" type="number" min="10" max="200" step="1" value="40"></div></div>
-<div class="field"><label for="baseShape">Base shape</label><select id="baseShape"><option value="rect">Rectangle</option><option value="roundrect">Rounded rectangle</option><option value="circle">Circle / ellipse</option><option value="contour">SVG contour (convex silhouette)</option></select></div>
+<div class="field"><label for="baseShape">Base shape</label><select id="baseShape" aria-describedby="baseShapeHelp"><option value="rect">Rectangle</option><option value="roundrect">Rounded rectangle</option><option value="circle">Circle / ellipse</option><option value="contour">SVG contour (convex silhouette)</option></select></div>
+<p class="hint" id="baseShapeHelp" hidden>SVG contour creates a convex backing plate around the artwork.</p>
 <p id="sizeSummary" class="hint measure" aria-live="polite">Generate to see artwork dimensions.</p>
 </section>
-<details class="advanced-group" id="borderPanel">
-<summary><span>Add border</span></summary>
+<section class="advanced-group" id="borderPanel" aria-label="Stamp border">
+<label class="border-toggle"><input id="borderEnabled" type="checkbox" aria-controls="borderFields" aria-describedby="borderModeHelp"> Add border</label>
 <div class="advanced-body">
-<div class="check"><input id="borderEnabled" type="checkbox"><label for="borderEnabled">Add a printable border</label></div>
 <p id="borderModeHelp" class="hint">Borders default to Sharp and match the artwork height.</p>
 <div id="borderFields" hidden>
 <div class="pair">
@@ -170,8 +171,9 @@
 </div>
 <div class="pair">
 <div class="field"><label for="borderThickness">Border thickness (mm)</label><input type="number" id="borderThickness" min="0.30" max="5" step="any" value="1" required></div>
-<div class="field"><label for="borderGap" id="borderGapLabel">Gap from artwork (mm)</label><input type="number" id="borderGap" min="0" max="20" step="any" value="2" required></div>
+<div class="field"><label for="borderGap" id="borderGapLabel">Gap from artwork (mm)</label><input type="number" id="borderGap" aria-describedby="borderHelp" min="0" max="20" step="any" value="2" required></div>
 </div>
+<p id="borderHelp" class="hint"></p>
 <div class="pair" id="borderHeightControls" hidden>
 <div class="field"><label for="borderHeightMode">Border height</label><select id="borderHeightMode"><option value="same">Same as artwork</option><option value="custom">Custom height</option></select></div>
 <div class="field" id="borderCustomHeight" hidden><label for="borderHeight">Custom border height (mm)</label><input id="borderHeight" type="number" min="0.2" max="5" step="any" value="1.5" required></div>
@@ -180,10 +182,9 @@
 <div class="field"><label for="borderEdge">Border edge</label><select id="borderEdge"><option value="sharp">Sharp</option><option value="chamfer">Chamfered</option><option value="round">Rounded</option></select></div>
 <div class="field" id="borderEdgeSizeField" hidden><label for="borderEdgeSize">Border edge size (mm)</label><input id="borderEdgeSize" type="number" min="0.01" max="2" step="any" value="0.25" required></div>
 </div>
-<p id="borderHelp" class="hint"></p>
 </div>
 </div>
-</details>
+</section>
 <details class="advanced-group" id="advancedSettings"><summary><span>Advanced settings</span><small>Depth, artwork adjustments, and mesh detail</small></summary>
 <div class="advanced-body">
 <p class="hint">The defaults are our tested starting values. Adjust only if you need a different impression depth, clearance or edge detail.</p>
@@ -196,8 +197,8 @@
 <div class="field" id="cornerField"><label for="corner">Base corner radius (mm)</label><input id="corner" type="number" min="0" max="40" step="0.5" value="5"></div>
 <div class="field" id="designOffsetField">
 <label for="designOffset">Design thickness adjustment (mm)</label>
-<div class="offset-control"><input id="designOffset" type="number" min="-0.5" max="0.5" step="any" value="0.00" required aria-describedby="offsetHelp"><input id="designOffsetSlider" type="range" min="-0.5" max="0.5" step="0.05" value="0" aria-label="Design thickness adjustment"></div>
-<p id="offsetHelp" class="hint">+ thickens details · − thins them · 0 keeps your SVG unchanged. The slider moves in 0.05 mm steps. Type a value for finer control. A strong adjustment can close small holes or remove thin details.</p>
+<div class="offset-control"><input id="designOffset" type="number" min="-0.5" max="0.5" step="any" value="0.00" required aria-describedby="offsetHelp"><input id="designOffsetSlider" type="range" min="-0.5" max="0.5" step="0.05" value="0" aria-label="Design thickness adjustment" aria-describedby="offsetHelp"></div>
+<p id="offsetHelp" class="hint">Positive values thicken the artwork edges. Negative values thin them. Large adjustments can close holes or remove thin details.</p>
 </div>
 <details class="nested-advanced"><summary>Mesh detail controls</summary>
 <div class="pair"><div class="field"><label for="curve">Curve detail</label><input id="curve" type="number" min="3" max="128" step="1" value="64"></div>
@@ -220,6 +221,16 @@
 </div>
 <p class="hint" id="presetStatus" role="status"></p>
 </div></details>
+<details id="firstStampGuide" class="nested-advanced">
+<summary>First stamp guide</summary>
+<ol class="hint">
+<li><strong>Start with the paw print.</strong> Choose <b>Use example paw print</b> and leave <b>Fit to base</b> selected. For your own SVG, use filled shapes and convert text and strokes to outlines in your vector editor.</li>
+<li><strong>Choose the impression.</strong> Start with <b>Debossing (raised stamp)</b> to press the paw into the leather. Choose <b>Embossing (recessed die)</b> for a raised impression. Keep <b>Mirror artwork for stamping</b> on for artwork that should read correctly on the leather. If the SVG is already reversed, turn it off.</li>
+<li><strong>Review the design.</strong> Open <b>2D Design</b> to check placement and holes. Turn on <b>Check small features</b> for estimated trouble spots. If you adjust thickness, use <b>Show thickness changes</b> to see what was added or removed.</li>
+<li><strong>Generate and inspect.</strong> Select <b>Generate 3D stamp</b>, check the 3D preview, and select <b>Download STL</b> once the mesh passes validation. In Bambu Studio, import in millimeters, verify the dimensions, and inspect the sliced layers for missing details or filled holes. Test the printed stamp on a leather offcut.</li>
+<li><strong>Keep your work.</strong> Use <b>Save project JSON</b> below Download STL to save your SVG and settings. Use <b>Load project JSON</b> to resume later.</li>
+</ol>
+</details>
 </aside><div id="stage">
 <div id="stageTools">
 <div id="previewNav" role="group" aria-label="Preview view">
@@ -249,10 +260,11 @@
 <p id="noChanges" class="hint" role="status" hidden>No thickness changes to show.</p>
 </div>
 <div id="featureControls">
-<label><input id="showFeatures" type="checkbox"> Check small features</label>
+<label><input id="showFeatures" type="checkbox" aria-describedby="featureHelp"> Check small features</label>
 <label id="minimumFeatureField" hidden>Minimum feature (mm)
 <input id="minimumFeature" type="number" min="0.05" max="5" step="any" value="0.4" required>
 </label>
+<p id="featureHelp" class="hint" hidden>Highlights narrow artwork and gaps below your chosen size.</p>
 <p id="featureStatus" class="hint" role="status" hidden></p>
 </div>
 </div>
@@ -1008,6 +1020,7 @@ function syncBorderUI(shape){
  syncBorderEdgeUI();
  syncBorderHeightUI();
  const enabled=$('borderEnabled').checked;
+ const recessed=$('mode').value==='recessed';
  const followsBase=$('borderPlacement').value==='base';
  const options=followsBase?[['match','Match base']]:artworkBorderShapes;
  const select=$('borderShape');
@@ -1022,11 +1035,11 @@ function syncBorderUI(shape){
  $('borderGapLabel').textContent=followsBase?'Distance from base edge (mm)':'Gap from artwork (mm)';
  $('borderHelp').textContent=followsBase
    ?'Measure inward from the base edge to the outside of the border.'
-   :select.value==='contour'
-     ?'Follows the outer silhouette. Separate shapes may have separate rings. Try a larger gap for complex artwork.'
-     :'Measure from the artwork to the inside of the border.';
- $('borderModeHelp').textContent=$('mode').value==='recessed'
-   ?'Borders are available for Debossing (raised stamp). Turn off the border or change the impression to continue.'
+   :'Measure from the artwork to the inside of the border.'+
+     (select.value==='contour'?' SVG contour can create separate rings around separate shapes.':'');
+ $('borderEnabled').disabled=recessed&&!enabled;
+ $('borderModeHelp').textContent=recessed
+   ?(enabled?'Turn off the border or switch to Debossing to generate a stamp.':'Borders are available with Debossing (raised stamp).')
    :'Borders default to Sharp and match the artwork height.';
 }
 $('borderPlacement').addEventListener('change',()=>syncBorderUI());
@@ -1134,6 +1147,7 @@ function drawFeatureCheck(artwork){
  const minimum=$('minimumFeature');
  const note=$('featureStatus');
  $('minimumFeatureField').hidden=!enabled;
+ $('featureHelp').hidden=!enabled;
  let narrow=[],gaps=[],message='';
  if(enabled&&artwork){
    if(!minimum.validity.valid){
@@ -1377,6 +1391,8 @@ function syncSimpleUI(){
  $('exactSizeFields').classList.toggle('active',exact);
  $('cornerField').hidden=$('baseShape').value!=='roundrect';
  const recessed=$('mode').value==='recessed';
+ $('impressionHelp').textContent=recessed?'A recessed die makes a raised impression in leather.':'A raised stamp presses the design into the leather.';
+ $('baseShapeHelp').hidden=$('baseShape').value!=='contour';
  $('edge').disabled=recessed;
  $('bevelField').hidden=recessed||$('edge').value==='sharp';
  $('edgeHelp').textContent=recessed?'Recessed dies use sharp cavity walls.'
@@ -1447,7 +1463,6 @@ $('projectFile').onchange=async e=>{
    applySettings(obj.settings);
    $('file').value='';
    fileLabel(artworkFilename||'Project artwork');
-   if($('borderEnabled').checked)$('borderPanel').open=true;
    settingsLoaded('Project loaded');
  }catch(err){
    showActionError('Project load failed: '+err.message,'Project load failed — see details');
