@@ -137,7 +137,7 @@
 <summary><span>Add border</span></summary>
 <div class="advanced-body">
 <div class="check"><input id="borderEnabled" type="checkbox"><label for="borderEnabled">Add a printable border</label></div>
-<p id="borderModeHelp" class="hint">Borders use sharp edges and default to the artwork height.</p>
+<p id="borderModeHelp" class="hint">Borders default to Sharp and match the artwork height.</p>
 <div id="borderFields" hidden>
 <div class="pair">
 <div class="field"><label for="borderPlacement">Placement</label><select id="borderPlacement"><option value="artwork">Fit around artwork</option><option value="base">Follow base</option></select></div>
@@ -150,6 +150,10 @@
 <div class="pair" id="borderHeightControls" hidden>
 <div class="field"><label for="borderHeightMode">Border height</label><select id="borderHeightMode"><option value="same">Same as artwork</option><option value="custom">Custom height</option></select></div>
 <div class="field" id="borderCustomHeight" hidden><label for="borderHeight">Custom border height (mm)</label><input id="borderHeight" type="number" min="0.2" max="5" step="any" value="1.5" required></div>
+</div>
+<div class="pair">
+<div class="field"><label for="borderEdge">Border edge</label><select id="borderEdge"><option value="sharp">Sharp</option><option value="chamfer">Chamfered</option><option value="round">Rounded</option></select></div>
+<div class="field" id="borderEdgeSizeField" hidden><label for="borderEdgeSize">Border edge size (mm)</label><input id="borderEdgeSize" type="number" min="0.01" max="2" step="any" value="0.25" required></div>
 </div>
 <p id="borderHelp" class="hint"></p>
 </div>
@@ -737,7 +741,7 @@ function meshFaultDetails(geom,limit=8){
  const fmt=v=>v.map(x=>x.toFixed(4)).join(',');
  return bad.slice(0,limit).map(e=>`${e.faces.length} face(s): (${fmt(coords[e.a])}) - (${fmt(coords[e.b])})`).concat(degens.slice(0,limit).map(i=>`degenerate face ${i}`)).join('\n');
 }
-function buildMesh({baseTree,inside,artwork,border,borderHeight},base,depth,raised,edge,bevel){
+function buildMesh({baseTree,inside,artwork,border,borderHeight,borderEdge},base,depth,raised,edge,bevel,borderBevel=0){
  const C=window.ClipperLib;
  // Partition the top of the base against the union of all relief.
  // Separate sharp border walls share this same base, with no bottom cap.
@@ -833,51 +837,50 @@ function buildMesh({baseTree,inside,artwork,border,borderHeight},base,depth,rais
      if(!flip){tri(lo0,lo1,hi1);tri(lo0,hi1,hi0)}else{tri(lo0,hi1,lo1);tri(lo0,hi0,hi1)}
    }
  }}
- // A flat base, with its exposed face split by the artwork boundary.
+ function raisedRelief(tree, footprint, height, profile, size, isBorder=false){
+   const zTop=base+height;
+   if(profile==='sharp'){
+     walls(tree,base,zTop);
+     cap(tree,zTop,true);
+     return;
+   }
+   if(size<0.00001)throw Error('Edge size is too small to form the selected profile.');
+   const steps=profile==='round'?8:6;
+   const zStart=zTop-size;
+   walls(tree,base,zStart);
+   let currentTree=tree,currentPaths=footprint,currentZ=zStart;
+   const ringCount=isBorder?rings(tree).length:0;
+   for(let j=1;j<=steps;j++){
+     const t=j/steps;
+     // Sample in XY to keep neighboring round-edge contours separated.
+     const insetDistance=size*t;
+     const zNext=profile==='round'?zStart+size*Math.sqrt(2*t-t*t):zStart+size*t;
+     const offset=new C.ClipperOffset(2,0.015*CS),inset=[];
+     offset.AddPaths(footprint,C.JoinType.jtRound,C.EndType.etClosedPolygon);
+     offset.Execute(inset,-insetDistance*CS);
+     if(!inset.length)throw Error('Edge size collapses the relief. Reduce the edge size.');
+     const nextTree=region(C.ClipType.ctIntersection,cleanOffsetRings(inset),footprint);
+     const nextPaths=paths(nextTree);
+     if(!nextPaths.length||(isBorder&&nextPaths.length!==ringCount)){
+       throw Error(isBorder?'The edge size collapses or splits the border.':'Edge size collapses the artwork.');
+     }
+     const band=region(C.ClipType.ctDifference,currentPaths,nextPaths);
+     if(!paths(band).length)throw Error('Edge resolution is too small for the selected profile.');
+     slopedBand(band,nextTree,currentZ,zNext);
+     currentTree=nextTree;
+     currentPaths=nextPaths;
+     currentZ=zNext;
+   }
+   cap(currentTree,zTop,true);
+ }
+
+ // A flat base shares one continuous top surface with both relief regions.
  cap(baseTree,0,false);walls(baseTree,0,base,false);
  if(raised){
    cap(outside,base,true);
-   const chamfer=edge==='sharp'?0:Math.min(bevel,depth*.45);
-   const zTop=base+depth;
-   const separateBorder=border&&(chamfer>=0.00001||borderHeight!==depth);
-   if(separateBorder){
-     const borderTop=base+borderHeight;
-     walls(border,base,borderTop);
-     cap(border,borderTop,true);
-   }
-   if(chamfer<0.00001){
-     const sharpArtwork=separateBorder?inside:relief;
-     walls(sharpArtwork,base,zTop);
-     cap(sharpArtwork,zTop,true);
-   }else{
-     const steps=edge==='round'?8:6;
-     const maxChamfer=Math.min(bevel,depth*.45);
-     const zStart=zTop-maxChamfer;
-     walls(inside,base,zStart);
-     let currentTree=inside,currentPaths=artwork,currentZ=zStart;
-     for(let j=1;j<=steps;j++){
-       const t=j/steps;
-       // V3.0: Sample round edges uniformly in XY inset distance, not Z.
-       // Previously the first round inset was ~0.002 mm for R=0.25 mm,
-       // causing near-coincident offset contours / poorly conditioned bands.
-       // This is the same quarter-circle arc, parameterized by its X coordinate.
-       const insetDistance=maxChamfer*t;
-       const zNext=edge==='round'
-         ?zStart+maxChamfer*Math.sqrt(Math.max(0,2*t-t*t))
-         :zStart+maxChamfer*t;
-       const offset=new C.ClipperOffset(2,0.015*CS),inset=[];
-       offset.AddPaths(artwork,C.JoinType.jtRound,C.EndType.etClosedPolygon);
-       offset.Execute(inset,-insetDistance*CS);
-       const nextTree=region(C.ClipType.ctIntersection,cleanOffsetRings(inset),artwork);
-       const nextPaths=paths(nextTree);
-       if(!nextPaths.length)throw Error('Edge size collapses the artwork. Reduce bevel size or choose Sharp.');
-       const band=region(C.ClipType.ctDifference,currentPaths,nextPaths);
-       if(!paths(band).length)throw Error('Bevel resolution is too small for this artwork. Increase edge size or use Sharp.');
-       slopedBand(band,nextTree,currentZ,zNext);
-       currentTree=nextTree;currentPaths=nextPaths;currentZ=zNext;
-     }
-     cap(currentTree,zTop,true);
-   }
+   const separateBorder=border&&(edge!=='sharp'||borderEdge!=='sharp'||borderHeight!==depth);
+   if(separateBorder)raisedRelief(border,paths(border),borderHeight,borderEdge,borderBevel,true);
+   raisedRelief(separateBorder?inside:relief,artwork,depth,edge,bevel);
  }else{
    if(depth>=base)throw Error('Cavity depth must be less than base thickness');
    cap(outside,base,true);
@@ -917,7 +920,7 @@ function placeArtworkPaths(loops,x,y,rotation){
  })));
 }
 
-const defaultBorder={borderEnabled:false,borderPlacement:'artwork',borderShape:'roundrect',borderThickness:1,borderGap:2,borderHeightMode:'same',borderHeight:1.5};
+const defaultBorder={borderEnabled:false,borderPlacement:'artwork',borderShape:'roundrect',borderThickness:1,borderGap:2,borderHeightMode:'same',borderHeight:1.5,borderEdge:'sharp',borderEdgeSize:0.25};
 const artworkBorderShapes=[['roundrect','Rounded rectangle'],['rect','Rectangle'],['ellipse','Circle / ellipse'],['contour','SVG contour']];
 function syncBorderHeightUI(){
  const visible=$('borderEnabled').checked&&$('mode').value==='raised';
@@ -925,7 +928,12 @@ function syncBorderHeightUI(){
  $('borderCustomHeight').hidden=$('borderHeightMode').value!=='custom';
 }
 $('borderHeightMode').addEventListener('change',syncBorderHeightUI);
+function syncBorderEdgeUI(){
+ $('borderEdgeSizeField').hidden=$('borderEdge').value==='sharp';
+}
+$('borderEdge').addEventListener('change',syncBorderEdgeUI);
 function syncBorderUI(shape){
+ syncBorderEdgeUI();
  syncBorderHeightUI();
  const enabled=$('borderEnabled').checked;
  const followsBase=$('borderPlacement').value==='base';
@@ -947,7 +955,7 @@ function syncBorderUI(shape){
      :'Measure from the artwork to the inside of the border.';
  $('borderModeHelp').textContent=$('mode').value==='recessed'
    ?'Borders are available for Debossing (raised stamp). Turn off the border or change the impression to continue.'
-   :'Borders use sharp edges and default to the artwork height.';
+   :'Borders default to Sharp and match the artwork height.';
 }
 $('borderPlacement').addEventListener('change',()=>syncBorderUI());
 for(const id of ['borderEnabled','borderShape','mode'])$(id).addEventListener('change',()=>syncBorderUI($('borderShape').value));
@@ -971,8 +979,14 @@ function prepareBorder(baseTree,inside){
  if(placement==='artwork'&&gap===0&&borderHeight!==relief){
    throw Error('A zero artwork gap requires the border and artwork to have the same height. Increase the gap or select Same as artwork.');
  }
- const border=stampBorder(baseTree,inside,{placement,shape,gap,thickness:getNumber('borderThickness'),sharp:$('edge').value==='sharp'});
- return {border,borderHeight};
+ const borderEdge=$('borderEdge').value;
+ if(!['sharp','chamfer','round'].includes(borderEdge))throw Error('Select a border edge profile.');
+ if(borderEdge!=='sharp'&&!$('borderEdgeSize').validity.valid)throw Error('Enter a border edge size from 0.01 to 2.00 mm.');
+ if(placement==='artwork'&&gap===0&&borderEdge!=='sharp')throw Error('A zero artwork gap requires Sharp border edges. Increase the gap or select Sharp.');
+ const thickness=getNumber('borderThickness');
+ const borderEdgeSize=borderEdge==='sharp'?0:getNumber('borderEdgeSize');
+ const border=stampBorder(baseTree,inside,{placement,shape,gap,thickness,sharp:$('edge').value==='sharp'});
+ return {border,borderHeight,borderEdge,borderEdgeSize,borderThickness:thickness};
 }
 
 function prepareDesign(compareOffset=false,preview=false){
@@ -1023,10 +1037,10 @@ function prepareDesign(compareOffset=false,preview=false){
      removed:before.length?paths(region(C.ClipType.ctDifference,before,artwork)):[]
    };
  }
- let border,borderHeight,borderError;
- try{({border,borderHeight}=prepareBorder(baseTree,inside))}
+ let borderDesign,borderError;
+ try{borderDesign=prepareBorder(baseTree,inside)}
  catch(error){if(!preview)throw error;borderError=error.message}
- return {baseTree,inside,artwork,artP,w,h,kind,shapes,raw,optimized,effectiveTolerance,offsetMm,offset,changes,border,borderHeight,borderError};
+ return {baseTree,inside,artwork,artP,w,h,kind,shapes,raw,optimized,effectiveTolerance,offsetMm,offset,changes,...borderDesign,borderError};
 }
 
 function svgPath(loops){
@@ -1205,17 +1219,26 @@ function build(){try{$('build').disabled=true;$('export').disabled=true;status.c
  // Fail closed, with explicit width reduction instead of a silent
  // invalid STL or a disguised sharp fallback. A valid candidate is accepted
  // only when its mesh actually has more triangles than the sharp baseline.
- let geometry=null,report=null,appliedBevel=bevel,attemptLog=[],faultDetails=[];
- const sharpReference=(raised&&edge!=='sharp'&&bevel>0)?buildMesh(design,base,depth,raised,'sharp',0):null;
+ const artworkLimit=Math.min(bevel,depth*.45);
+ const borderLimit=design.border?Math.min(design.borderEdgeSize,design.borderHeight*.45,design.borderThickness*.45):0;
+ let geometry=null,report=null,appliedBevel=0,appliedBorderBevel=0,attemptLog=[],faultDetails=[];
+ const sharpReference=(artworkLimit||borderLimit)
+   ?buildMesh({...design,borderEdge:'sharp'},base,depth,raised,'sharp',0):null;
  const sharpTriangles=sharpReference?geometryReport(sharpReference).triangles:0;
  if(sharpReference)sharpReference.dispose();
- const widths=(raised&&edge!=='sharp'&&bevel>0)
-   ?[1,.85,.7,.55,.4,.3,.2,.1].map(f=>Number((Math.min(bevel,depth*.45)*f).toFixed(5))).filter((v,i,a)=>v>0&&a.indexOf(v)===i)
-   :[bevel];
- for(const width of widths){
+ const widths=[[artworkLimit,borderLimit]];
+ for(const fraction of [.85,.7,.55,.4,.3,.2,.1]){
+   const artReduced=Number((artworkLimit*fraction).toFixed(5));
+   const borderReduced=Number((borderLimit*fraction).toFixed(5));
+   if(artworkLimit)widths.push([artReduced,borderLimit]);
+   if(borderLimit)widths.push([artworkLimit,borderReduced]);
+   if(artworkLimit&&borderLimit)widths.push([artReduced,borderReduced]);
+ }
+ for(const [width,borderWidth] of widths){
+   const label=design.border?`Artwork ${width.toFixed(3)} mm · Border ${borderWidth.toFixed(3)} mm`:`${width.toFixed(3)} mm`;
    let candidate=null;
    try{
-     candidate=buildMesh(design,base,depth,raised,edge,width);
+     candidate=buildMesh(design,base,depth,raised,edge,width,borderWidth);
      let check=geometryReport(candidate);
      let stitchCount=0,weldCount=0,sliverCount=0,removedCount=0;
      if((edge!=='sharp'||design.border)&&check.boundary>0){
@@ -1235,11 +1258,11 @@ function build(){try{$('build').disabled=true;$('export').disabled=true;status.c
      }
      const invalid=check.boundary+check.nonmanifold+check.degenerate+check.winding;
      if(invalid && (check.boundary+check.nonmanifold)<=4 && faultDetails.length===0)
-       faultDetails.push(`${width.toFixed(3)} mm failure details:\n${meshFaultDetails(candidate,6)}`);
+       faultDetails.push(`${label} failure details:\n${meshFaultDetails(candidate,6)}`);
      const noBevel=sharpTriangles>0&&check.triangles<=sharpTriangles;
-     attemptLog.push(`${width.toFixed(3)} mm: ${check.boundary} open, ${check.nonmanifold} non-manifold, ${check.degenerate} degenerate, ${check.winding} winding conflicts${weldCount?' (welded '+weldCount+' pairs)':''}${stitchCount?' (stitched '+stitchCount+' vertices)':''}${sliverCount?' (collapsed '+sliverCount+' boundary slivers, removed '+removedCount+' degenerate faces)':''}${noBevel?' (bevel not verified)':''}`);
-     if(!invalid&&!noBevel){geometry=candidate;report=check;appliedBevel=Math.min(width,depth*.45);break}
-   }catch(err){attemptLog.push(`${width.toFixed(3)} mm: ${err.message}`)}
+     attemptLog.push(`${label}: ${check.boundary} open, ${check.nonmanifold} non-manifold, ${check.degenerate} degenerate, ${check.winding} winding conflicts${weldCount?' (welded '+weldCount+' pairs)':''}${stitchCount?' (stitched '+stitchCount+' vertices)':''}${sliverCount?' (collapsed '+sliverCount+' boundary slivers, removed '+removedCount+' degenerate faces)':''}${noBevel?' (bevel not verified)':''}`);
+     if(!invalid&&!noBevel){geometry=candidate;report=check;appliedBevel=width;appliedBorderBevel=borderWidth;break}
+   }catch(err){attemptLog.push(`${label}: ${err.message}`)}
    if(candidate)candidate.dispose();
  }
  if(!geometry){
@@ -1253,7 +1276,14 @@ function build(){try{$('build').disabled=true;$('export').disabled=true;status.c
  finalMesh=new THREE.Mesh(geometry,new THREE.MeshStandardMaterial({color:0xc7a27c,metalness:.12,roughness:.67,side:THREE.DoubleSide}));modelGroup.add(finalMesh);
  const bounds=new THREE.Box3().setFromObject(finalMesh),center=bounds.getCenter(new THREE.Vector3()),span=bounds.getSize(new THREE.Vector3()),radius=Math.max(span.x,span.y,span.z,15);controls.target.copy(center);camera.position.copy(center).add(new THREE.Vector3(radius*1.5,-radius*1.7,radius*1.6));camera.near=.1;camera.far=Math.max(2000,radius*20);camera.updateProjectionMatrix();controls.update();
  status.textContent=`Artwork: ${raw.artW.toFixed(2)} × ${raw.artH.toFixed(2)} mm · Base: ${w.toFixed(2)} × ${h.toFixed(2)} mm\n${raised?'Debossing (raised stamp)':'Embossing (recessed die)'} · ${kind} base · ${shapes.length} SVG shapes / ${optimized.vertices.toLocaleString()} optimized vertices · ${effectiveTolerance.toFixed(3)} mm tolerance · ${report.triangles.toLocaleString()} triangles\nMesh check: ${report.boundary} boundary edges, ${report.nonmanifold} non-manifold edges, ${report.degenerate} degenerate triangles, ${report.winding} winding conflicts. ${issues?'EXPORT BLOCKED: invalid mesh.':'Basic manifold checks passed. Export enabled.'}\nRequested edge: ${bevel.toFixed(3)} mm · Applied edge: ${appliedBevel.toFixed(3)} mm${appliedBevel<bevel?" (automatically reduced for mesh integrity)":""}.\nDesign thickness adjustment: ${offsetMm>=0?'+':''}${offsetMm.toFixed(2)} mm.`;
- if(design.border)status.textContent+=`\nSharp border · ${design.borderHeight} mm high`;
+ if(design.border){
+   const label={sharp:'Sharp',chamfer:'Chamfered',round:'Rounded'}[design.borderEdge];
+   status.textContent+=`\n${label} border · ${design.borderHeight} mm high`;
+   if(design.borderEdge!=='sharp'){
+     const reduced=appliedBorderBevel<design.borderEdgeSize?' (reduced for clearance or mesh integrity)':'';
+     status.textContent+=` · Applied border edge: ${appliedBorderBevel.toFixed(3)} mm${reduced}`;
+   }
+ }
  appendMeshDetails(attemptLog.join('\n'));
  status.className=issues?'bad':'good';$('export').disabled=!!issues;progress(issues?'Mesh invalid · Export blocked':'Mesh validated · STL ready to download',issues?'error':'ok');
  showPrintabilityNote(design.offset);

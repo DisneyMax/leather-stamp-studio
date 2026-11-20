@@ -894,3 +894,55 @@ test('a shorter sharp border stays distinct, and touching relief requires equal 
   expectClosedMesh(legacy);
   expect(surfaceHeight(legacy, 13, 0)).toBe(7.5);
 });
+
+for (const borderShape of ['rect', 'ellipse', 'contour']) {
+  for (const [borderEdge, label, layerCount] of [['chamfer', 'Chamfered', 6], ['round', 'Rounded', 8]]) {
+    test(`${label} ${borderShape} border keeps intermediate relief layers`, async ({ page }) => {
+      const design = borderShape === 'contour'
+        ? artwork('<path d="M0 0H25V6H8V20H0Z"/>')
+        : smallBorderArt;
+      await load(page, design, {
+        ...borderSettings, mirror: false, borderShape, borderEdge, borderEdgeSize: 0.25, width: 60, height: 60,
+        borderHeightMode: 'custom', borderHeight: 2.25,
+      });
+      await expect(page.getByRole('spinbutton', { name: 'Border edge size (mm)' })).toBeVisible();
+      await generate(page);
+      const triangles = parseSTL(await download(page, '#export'));
+      expectClosedMesh(triangles);
+      expect(surfaceHeight(triangles, -9, 0)).toBe(7.5);
+      const z = new Set(triangles.flat().map(point => point[2]).filter(height => height > 7.5));
+      expect(z.size).toBe(layerCount + 1);
+      await expect(page.locator('#status')).toContainText(`${label} border`);
+      await expect(page.locator('#status')).toContainText(/Applied border edge: 0\.\d+ mm/);
+    });
+  }
+}
+
+test('border edge recovery keeps artwork bevel, saves the profile, and rejects a touching beveled border', async ({ page }) => {
+  await load(page, smallBorderArt, {
+    ...borderSettings, edge: 'chamfer', borderShape: 'rect', borderEdge: 'round', borderEdgeSize: 1.5,
+  });
+  await generate(page);
+  await expect(page.locator('#status')).toContainText('Applied edge: 0.250 mm');
+  await expect(page.locator('#status')).toContainText('Applied border edge: 0.450 mm (reduced');
+  const triangles = parseSTL(await download(page, '#export'));
+  expectClosedMesh(triangles);
+  expect(new Set(triangles.flat().filter(([x, y]) => Math.abs(x) < 13 && Math.abs(y) < 11).map(point => point[2])).size).toBeGreaterThan(2);
+
+  await page.locator('#projectSettings > summary').click();
+  const saved = JSON.parse(await download(page, '#save'));
+  expect(saved.settings).toMatchObject({ borderEdge: 'round', borderEdgeSize: '1.5' });
+  await load(page, saved.svg, saved.settings);
+  await expect(page.locator('#borderEdge')).toHaveValue('round');
+  await expect(page.locator('#borderEdgeSize')).toHaveValue('1.5');
+  await page.locator('#edge').selectOption('sharp');
+  await page.locator('#borderGap').fill('0');
+  await page.locator('#build').click();
+  await expect(page.locator('#status')).toContainText('zero artwork gap requires Sharp border edges');
+  await expect(page.locator('#export')).toBeDisabled();
+
+  await load(page, saved.svg, { ...borderSettings, borderShape: 'rect' });
+  await expect(page.locator('#borderEdge')).toHaveValue('sharp');
+  await expect(page.getByRole('spinbutton', { name: 'Border edge size (mm)' })).toBeHidden();
+  await generate(page);
+});
