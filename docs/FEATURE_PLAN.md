@@ -2,12 +2,7 @@
 
 Updated November 20, 2026. Priority goes to the SVG-to-STL workflow and features that can be checked against exported geometry.
 
-## Shipped
-
-- **V3.1** simplified setup, Advanced settings, design thickness adjustment, and pull-request CI. [PR #4](https://github.com/DisneyMax/leather-stamp-studio/pull/4)
-- **V3.2** a live 2D view, exact sizing, artwork placement and rotation, and 3D camera shortcuts. [PR #6](https://github.com/DisneyMax/leather-stamp-studio/pull/6)
-- **V3.3 and maker improvements** printability notes, thickness-change highlights, small-feature estimates, first-stamp guide, and browser-local presets. [PR #7](https://github.com/DisneyMax/leather-stamp-studio/pull/7)
-- **Stamp borders and export naming** sharp borders on raised stamps at artwork height, with Follow base and Fit around artwork placement. STL names include the SVG name, impression, artwork edge, and base shape. Sharp is the default artwork edge. [PR #8](https://github.com/DisneyMax/leather-stamp-studio/pull/8)
+See [implemented features](IMPLEMENTED_FEATURES.md) for the current app capabilities.
 
 ## Proposed order
 
