@@ -306,7 +306,14 @@ test('recommended settings generate the included paw print', async ({ page }) =>
   await expect(guide.locator('ol')).toBeVisible();
   await expect(guide).toContainText('Bambu Studio');
   await page.getByRole('button', { name: 'Use example paw print' }).click();
+  await expect(page.getByRole('group', { name: 'Artwork dimensions' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Backing-plate dimensions' })).toBeVisible();
+  await expect(page.getByRole('checkbox', { name: 'Mirror artwork for stamping' }))
+    .toHaveAccessibleDescription(/text reads correctly/);
+  await page.getByRole('button', { name: '2D Design' }).click();
+  await expect(page.locator('#designArt')).toHaveAttribute('d', /^M/);
   await generate(page);
+  await expect(page.locator('#advancedSettings')).toHaveJSProperty('open', false);
   expectClosedMesh(parseSTL(await download(page, '#export')));
 });
 
@@ -876,10 +883,38 @@ test('zero gap joins a sharp frame and invalid border settings block export', as
 });
 
 
+test('keyboard border toggle reveals controls and preserves settings', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 660 });
+  const toggle = page.getByRole('checkbox', { name: 'Add border' });
+  const fields = page.locator('#borderFields');
+  const placement = page.getByRole('combobox', { name: 'Placement', exact: true });
+  await expect(fields).toBeHidden();
+  await toggle.press('Space');
+  await expect(fields).toBeVisible();
+  await page.keyboard.press('Tab');
+  await expect(placement).toBeFocused();
+  await expect(page.getByRole('spinbutton', { name: 'Gap from artwork (mm)' })).toBeVisible();
+  await placement.selectOption('base');
+  const distance = page.getByRole('spinbutton', { name: 'Distance from base edge (mm)' });
+  await distance.fill('3');
+  await toggle.press('Space');
+  await expect(fields).toBeHidden();
+  await toggle.press('Space');
+  await expect(distance).toHaveValue('3');
+  await page.locator('#mode').selectOption('recessed');
+  await expect(toggle).toBeEnabled();
+  await toggle.press('Space');
+  await expect(toggle).toBeDisabled();
+  await expect(fields).toBeHidden();
+  await page.locator('#mode').selectOption('raised');
+  await expect(toggle).toBeEnabled();
+});
+
 test('a flush Follow base border works on a narrow screen', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 660 });
   const panel = page.locator('#borderPanel');
-  await expect(panel.locator('#borderEnabled')).toBeHidden();
+  await expect(panel.getByRole('checkbox', { name: 'Add border' })).toBeVisible();
+  await expect(panel.locator('#borderFields')).toBeHidden();
   await load(page, smallBorderArt, { ...borderSettings, edge: 'round', borderPlacement: 'base', borderGap: 0 });
   await expect(panel.locator('#borderGap')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
