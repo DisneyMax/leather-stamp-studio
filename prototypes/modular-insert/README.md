@@ -5,6 +5,7 @@ This Phase A prototype tests the **experimental keyed-40-v1** interface. The sam
 | Sample | Purpose |
 | --- | --- |
 | `holder-keyed-40-v1-0p20.stl` | 44 × 44 × 6 reusable holder with a 0.20 mm lateral gap per side |
+| `holder-keyed-40-v1-0p25.stl` | Same holder with 0.25 mm lateral clearance per side for the full-length fit comparison |
 | `insert-ring-keyed-40-v1.stl` | 40 × 40 overall envelope with a 2.5 mm backing and 1.5 mm ring relief |
 | `insert-asymmetric-keyed-40-v1.stl` | Same interface with a different raised pattern |
 | `fit-coupon-keyed-40-v1.stl` | 14 × 132 coupon with three short receivers |
@@ -20,7 +21,7 @@ The central backing lies on a 3.5 mm continuous floor. Only the guide tongues si
 
 1. Import the coupon and slider in Bambu Studio at the supplied orientation and verify their dimensions. The holder and coupon have their flat outer faces on the bed. The inserts and slider have their flat central undersides on the bed. Inspect layer continuity, the underside of the rail lips, and clearance cuts before printing. Straight rail overhangs and first-layer fit still need slicer and print validation.
 2. With rails facing up and the coupon openings towards you, rotate the coupon so insertion moves away from you. The tracks read left to right **0.25, 0.20, 0.15 mm per side**. Mark them before handling the coupon. Slide the key into each track gently. Check play, binding, seating, and removal. The open end is intentionally accessible.
-3. The full-size holder supplied here uses 0.20 mm per side as a starting point. If your coupon favors another clearance, record it before printing the full holder and retest with that setting. A short coupon does not capture full-length warp or binding.
+3. The initial coupon trial fit at all three clearances, while the follow-up fit was reported very snug and difficult to remove. For a full-length comparison, print the 0.25 mm-per-side holder and use the same inserts and print settings. Record whether each insert moves freely through the track or binds near the stop. A short coupon cannot reveal full-length warp or binding.
 4. Check both full inserts for flat seating and repeatable registration. Start with gentle pressure on a leather offcut. Stop if the holder lip leaves a mark or if either part slips, flexes visibly, cracks, or binds. Inspect the parts after each early swap and press. This prototype has no tested load rating.
 5. Record printer, nozzle, filament, layer height, walls, infill, fit, swaps, and presses. Compare slicer time/material and dried impressions with an equivalent solid stamp. Record results before choosing a default fit.
 

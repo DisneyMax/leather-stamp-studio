@@ -66,6 +66,7 @@ export function parts() {
     [`insert-asymmetric-${interfaceId}.stl`, insert(envelope, letter)],
     [`fit-coupon-${interfaceId}.stl`, coupon],
     [`fit-slider-${interfaceId}.stl`, insert(couponLength)],
+    [`holder-${interfaceId}-0p25.stl`, holder(0.25)],
   ]);
 }
 

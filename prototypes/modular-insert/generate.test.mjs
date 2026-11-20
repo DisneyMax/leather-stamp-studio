@@ -81,27 +81,31 @@ for (const clearance of fitClearances) {
   });
 }
 
-test('both prints slide along +X, seat on the continuous floor, and clear the holder rim', () => {
-  const printed = [...parts().values()];
-  const [receiver, ...inserts] = printed.slice(0, 3);
-  const [floor, stop] = receiver;
-  assert.deepEqual(bounds(receiver), [0, -22, 0, 44, 22, 6]);
-  for (const component of inserts) {
-    assert.deepEqual(bounds(component), [0, -20, 0, 40, 20, 4]);
-    const [backing, ...detail] = component.map(box => translate(box, [0, 0, floor[5]]));
-    for (const box of [backing, ...detail]) {
-      // Union of every translated position from fully outside to seated.
-      const swept = [box[0] - 40, ...box.slice(1)];
-      assert.ok(receiver.every(wall => !collides(swept, wall)));
+for (const clearance of [0.20, 0.25]) {
+  test(`both inserts slide to the stop and clear the rim with ${clearance} mm per side`, () => {
+    const inserts = [...parts()].filter(([name]) => name.startsWith('insert-')).map(([, boxes]) => boxes);
+    const receiver = holder(clearance);
+    const [, , leftWall, rightWall] = receiver;
+    assert.ok(Math.abs(rightWall[1] - leftWall[4] - (40 + 2 * clearance)) < 1e-8);
+    const [floor, stop] = receiver;
+    assert.deepEqual(bounds(receiver), [0, -22, 0, 44, 22, 6]);
+    for (const component of inserts) {
+      assert.deepEqual(bounds(component), [0, -20, 0, 40, 20, 4]);
+      const [backing, ...detail] = component.map(box => translate(box, [0, 0, floor[5]]));
+      for (const box of [backing, ...detail]) {
+        // Union of every translated position from fully outside to seated.
+        const swept = [box[0] - 40, ...box.slice(1)];
+        assert.ok(receiver.every(wall => !collides(swept, wall)));
+      }
+      assert.equal(backing[2], floor[5]);
+      assert.equal(backing[3], stop[0]);
+      assert.ok(collides(translate(backing, [0.01, 0, 0]), stop));
+      assert.ok(floor[0] <= backing[0] && floor[3] >= backing[3]);
+      assert.ok(floor[1] <= backing[1] && floor[4] >= backing[4]);
+      for (const relief of detail.slice(2)) {
+        assert.equal(relief[2], 6);
+        assert.equal(relief[5] - bounds(receiver)[5], 1.5);
+      }
     }
-    assert.equal(backing[2], floor[5]);
-    assert.equal(backing[3], stop[0]);
-    assert.ok(collides(translate(backing, [0.01, 0, 0]), stop));
-    assert.ok(floor[0] <= backing[0] && floor[3] >= backing[3]);
-    assert.ok(floor[1] <= backing[1] && floor[4] >= backing[4]);
-    for (const relief of detail.slice(2)) {
-      assert.equal(relief[2], 6);
-      assert.equal(relief[5] - bounds(receiver)[5], 1.5);
-    }
-  }
-});
+  });
+}
