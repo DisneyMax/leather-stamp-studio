@@ -95,7 +95,6 @@
 #borderPanel [hidden]{display:none}
 #meshDetails{margin-top:6px}
 #meshDetails summary{cursor:pointer}
-#borderHeightControls[hidden],#borderCustomHeight[hidden]{display:none}
 </style>
 <script type="importmap">{"imports":{"three":"https://esm.sh/three@0.180.0","three/addons/":"https://esm.sh/three@0.180.0/examples/jsm/"}}</script>
 <script src="https://cdn.jsdelivr.net/npm/clipper-lib@6.4.2/clipper.js"></script>
@@ -138,7 +137,7 @@
 <summary><span>Add border</span></summary>
 <div class="advanced-body">
 <div class="check"><input id="borderEnabled" type="checkbox"><label for="borderEnabled">Add a printable border</label></div>
-<p id="borderModeHelp" class="hint">Borders use sharp edges. Set a custom height in Advanced settings.</p>
+<p id="borderModeHelp" class="hint">Borders use sharp edges and default to the artwork height.</p>
 <div id="borderFields" hidden>
 <div class="pair">
 <div class="field"><label for="borderPlacement">Placement</label><select id="borderPlacement"><option value="artwork">Fit around artwork</option><option value="base">Follow base</option></select></div>
@@ -147,6 +146,10 @@
 <div class="pair">
 <div class="field"><label for="borderThickness">Border thickness (mm)</label><input type="number" id="borderThickness" min="0.30" max="5" step="any" value="1" required></div>
 <div class="field"><label for="borderGap" id="borderGapLabel">Gap from artwork (mm)</label><input type="number" id="borderGap" min="0" max="20" step="any" value="2" required></div>
+</div>
+<div class="pair" id="borderHeightControls" hidden>
+<div class="field"><label for="borderHeightMode">Border height</label><select id="borderHeightMode"><option value="same">Same as artwork</option><option value="custom">Custom height</option></select></div>
+<div class="field" id="borderCustomHeight" hidden><label for="borderHeight">Custom border height (mm)</label><input id="borderHeight" type="number" min="0.2" max="5" step="any" value="1.5" required></div>
 </div>
 <p id="borderHelp" class="hint"></p>
 </div>
@@ -160,10 +163,6 @@
 <div class="field"><label for="depth">Impression depth (mm)</label><input id="depth" type="number" min="0.2" max="5" step="0.1" value="1.5"></div>
 <div class="field"><label for="margin">Artwork margin (mm)</label><input id="margin" type="number" min="0.5" max="30" step="0.5" value="4"></div>
 <div class="field" id="bevelField"><label for="bevel">Edge size (mm)</label><input id="bevel" type="number" min="0" max="2" step="0.05" value="0.25"></div>
-</div>
-<div class="pair" id="borderHeightControls" hidden>
-<div class="field"><label for="borderHeightMode">Border height</label><select id="borderHeightMode"><option value="same">Same as artwork</option><option value="custom">Custom height</option></select></div>
-<div class="field" id="borderCustomHeight" hidden><label for="borderHeight">Custom border height (mm)</label><input id="borderHeight" type="number" min="0.2" max="5" step="any" value="1.5" required></div>
 </div>
 <div class="field" id="cornerField"><label for="corner">Base corner radius (mm)</label><input id="corner" type="number" min="0" max="40" step="0.5" value="5"></div>
 <div class="field" id="designOffsetField">
@@ -948,7 +947,7 @@ function syncBorderUI(shape){
      :'Measure from the artwork to the inside of the border.';
  $('borderModeHelp').textContent=$('mode').value==='recessed'
    ?'Borders are available for Debossing (raised stamp). Turn off the border or change the impression to continue.'
-   :'Borders use sharp edges. Set a custom height in Advanced settings.';
+   :'Borders use sharp edges and default to the artwork height.';
 }
 $('borderPlacement').addEventListener('change',()=>syncBorderUI());
 for(const id of ['borderEnabled','borderShape','mode'])$(id).addEventListener('change',()=>syncBorderUI($('borderShape').value));

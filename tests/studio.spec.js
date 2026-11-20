@@ -838,9 +838,9 @@ test('STL filenames use the SVG name and effective stamp settings', async ({ pag
 test('custom border height updates the preview and STL while preserving artwork relief', async ({ page }) => {
   await load(page, smallBorderArt, { ...borderSettings, borderShape: 'rect', edge: 'chamfer' });
   await page.getByRole('button', { name: '2D design' }).click();
-  await page.locator('#advancedSettings > summary').click();
-  const mode = page.getByRole('combobox', { name: 'Border height', exact: true });
-  const height = page.getByRole('spinbutton', { name: 'Custom border height (mm)' });
+  const panel = page.locator('#borderPanel');
+  const mode = panel.getByRole('combobox', { name: 'Border height', exact: true });
+  const height = panel.getByRole('spinbutton', { name: 'Custom border height (mm)' });
   await expect(mode).toHaveValue('same');
   await expect(height).toBeHidden();
   const border = page.locator('#borderPreview');
