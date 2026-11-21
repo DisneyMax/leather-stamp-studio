@@ -31,7 +31,7 @@ The initial coupon trial fit at all three clearances, while the follow-up fit wa
 
 ## Observed fit
 
-The full-size holder with **0.25 mm clearance per side and 0.35 mm overhead** had a near-perfect hand fit in the latest trial. After a couple of insertion cycles, the insert slid freely in and out. Use this variant for the next press trial. Registration under load, rim clearance on leather, and longer-term wear are still unverified.
+The full-size holder with **0.25 mm clearance per side and 0.35 mm overhead** had a near-perfect hand fit in the latest trial. After a couple of insertion cycles, the insert slid freely in and out. The user also confirmed that the follow-up leather-offcut press check went well. This is the preferred clearance for the tested setup. Longer-term wear and fit across other printers and materials remain unverified.
 
 ## Reproduce and verify
 
