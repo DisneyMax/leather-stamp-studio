@@ -43,6 +43,10 @@ The full-size holder with **0.25 mm clearance per side and 0.35 mm overhead** ha
 | Ironing speed | 30 mm/s |
 | Ironing flow | 30% |
 
+## Observed print times
+
+Printing the insert and reusable base together took about **60 minutes** in the reported test. Printing just the insert took about **20 minutes**. Once the base is printed, reusing it saves about **40 minutes per additional insert**, a **67% reduction** compared with printing both parts again.
+
 ## Reproduce and verify
 
 ```sh
