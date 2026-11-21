@@ -40,4 +40,10 @@ node prototypes/modular-insert/generate.mjs prototypes/modular-insert/samples
 node --test prototypes/modular-insert/generate.test.mjs
 ```
 
-Tests read the emitted binary mesh data and check closed edges, consistent winding, a connected shell, outward normals, and bounds. Assembly tests check insertion clearance through the full slide, keyed orientation, stop contact, floor support, and nominal rim clearance. The sample models use fixed geometry. SVG-driven inserts, assembled preview, and production application controls are for a later phase.
+Tests read the emitted binary mesh data and check closed edges, consistent winding, a connected shell, outward normals, and bounds. Assembly tests check insertion clearance through the full slide, keyed orientation, stop contact, floor support, and nominal rim clearance. The sample inserts use fixed geometry.
+
+## SVG-driven inserts
+
+Choose **Keyed modular insert** under **Stamp construction**. This mode uses the fixed keyed-40-v1 backing and the tested 0.25 mm per side / 0.35 mm overhead holder. Choose **Debossing (raised stamp)**. Generate the insert from the current SVG, then download it separately from the reusable holder. **Show holder** toggles the assembled 3D preview. The holder STL uses its original bed-facing orientation.
+
+The seated insert extends from X=−22 to +18 mm relative to the center of the 44 mm holder. The artwork origin sits at the holder center, 2 mm toward the rear stop from the insert envelope center. The unequal keys affect the backing profile and do not shift the artwork origin in Y. Position controls are offsets from the holder center. The 35 × 35.8 mm centered face area (before artwork margin) leaves clearance at the backing edge. A **Follow base** border follows this centered area. Exact size never expands the fixed backing. A design outside the face area blocks insert export.
