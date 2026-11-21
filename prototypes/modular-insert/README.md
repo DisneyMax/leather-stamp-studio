@@ -29,6 +29,10 @@ The initial coupon trial fit at all three clearances, while the follow-up fit wa
 4. Check both full inserts for flat seating and repeatable registration. Start with gentle pressure on a leather offcut. Stop if the holder lip leaves a mark or if either part slips, flexes visibly, cracks, or binds. Inspect the parts after each early swap and press. This prototype has no tested load rating.
 5. Record printer, nozzle, filament, layer height, walls, infill, fit, swaps, and presses. Compare slicer time/material and dried impressions with an equivalent solid stamp. Record results before choosing a default fit.
 
+## Observed fit
+
+The full-size holder with **0.25 mm clearance per side and 0.35 mm overhead** had a near-perfect hand fit in the latest trial. After a couple of insertion cycles, the insert slid freely in and out. Use this variant for the next press trial. Registration under load, rim clearance on leather, and longer-term wear are still unverified.
+
 ## Reproduce and verify
 
 ```sh
