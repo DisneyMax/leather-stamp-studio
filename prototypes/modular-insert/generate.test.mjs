@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
-import { fitClearances, holder, insert, mesh, parts, stl, translate } from './generate.mjs';
+import { comparisonHolders, fitClearances, holder, insert, mesh, parts, stl, translate } from './generate.mjs';
 
 function collides(a, b) {
   return [0, 1, 2].every(axis =>
@@ -81,12 +81,15 @@ for (const clearance of fitClearances) {
   });
 }
 
-for (const clearance of [0.20, 0.25]) {
-  test(`both inserts slide to the stop and clear the rim with ${clearance} mm per side`, () => {
+for (const { lateral, overhead } of [{ lateral: 0.20, overhead: 0.20 }, ...comparisonHolders]) {
+  test(`both inserts slide to the stop and clear the rim with ${lateral} mm per side and ${overhead} mm overhead`, () => {
     const inserts = [...parts()].filter(([name]) => name.startsWith('insert-')).map(([, boxes]) => boxes);
-    const receiver = holder(clearance);
-    const [, , leftWall, rightWall] = receiver;
-    assert.ok(Math.abs(rightWall[1] - leftWall[4] - (40 + 2 * clearance)) < 1e-8);
+    const receiver = holder(lateral, 40, overhead);
+    const [pocketFloor, , leftWall, rightWall, leftRail, rightRail] = receiver;
+    for (const rail of [leftRail, rightRail]) {
+      assert.ok(Math.abs(rail[2] - pocketFloor[5] - insert()[1][5] - overhead) < 1e-8);
+    }
+    assert.ok(Math.abs(rightWall[1] - leftWall[4] - (40 + 2 * lateral)) < 1e-8);
     const [floor, stop] = receiver;
     assert.deepEqual(bounds(receiver), [0, -22, 0, 44, 22, 6]);
     for (const component of inserts) {

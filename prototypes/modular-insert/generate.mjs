@@ -11,12 +11,13 @@ const floor = 3.5;
 const rim = 6;
 const tongueBottom = 0.25;
 const tongueTop = 1;
-const railUnderside = floor + 1.2;
+const standardOverheadClearance = 0.20;
 const coreLeft = -19;
 const coreRight = 18.4;
 const entry = 4;
 
-export function holder(clearance = 0.2, length = envelope) {
+export function holder(clearance = 0.2, length = envelope, overheadClearance = standardOverheadClearance) {
+  const railUnderside = floor + tongueTop + overheadClearance;
   const end = length + 4;
   const pocket = halfEnvelope + clearance;
   return [
@@ -54,6 +55,12 @@ export function translate([x0, y0, z0, x1, y1, z1], [x, y, z]) {
   return [x0 + x, y0 + y, z0 + z, x1 + x, y1 + y, z1 + z];
 }
 
+export const comparisonHolders = [
+  { suffix: '0p25', lateral: 0.25, overhead: 0.20 },
+  { suffix: '0p35-side', lateral: 0.35, overhead: 0.20 },
+  { suffix: '0p25-side-0p35-overhead', lateral: 0.25, overhead: 0.35 },
+];
+
 export function parts() {
   const couponLength = 10;
   // Join three receivers along their floors. Viewed from the open edge at X=0,
@@ -66,7 +73,8 @@ export function parts() {
     [`insert-asymmetric-${interfaceId}.stl`, insert(envelope, letter)],
     [`fit-coupon-${interfaceId}.stl`, coupon],
     [`fit-slider-${interfaceId}.stl`, insert(couponLength)],
-    [`holder-${interfaceId}-0p25.stl`, holder(0.25)],
+    ...comparisonHolders.map(({ suffix, lateral, overhead }) =>
+      [`holder-${interfaceId}-${suffix}.stl`, holder(lateral, envelope, overhead)]),
   ]);
 }
 
