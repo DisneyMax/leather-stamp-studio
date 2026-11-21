@@ -30,11 +30,11 @@ function holder(clearance = 0.2, length = envelope, overheadClearance = standard
   ];
 }
 
-function insert(length = envelope, relief = []) {
+function insert(length = envelope, relief = [], wingRelief = 0) {
   return [
     [0, coreLeft, 0, length, coreRight, rim - floor],
-    [0, -halfEnvelope, tongueBottom, length, coreLeft, tongueTop],
-    [0, coreRight, tongueBottom, length, halfEnvelope, tongueTop],
+    [0, -halfEnvelope + wingRelief, tongueBottom, length, coreLeft, tongueTop],
+    [0, coreRight, tongueBottom, length, halfEnvelope - wingRelief, tongueTop],
     ...relief,
   ];
 }
@@ -79,7 +79,8 @@ function mesh(boxes) {
 }
 
 const holderCenterX = (envelope + rearStop) / 2;
-const insertBacking = insert().map(([x0, y0, z0, x1, y1, z1]) =>
+// Extra lateral clearance on the outer wing faces of app-generated inserts.
+const insertBacking = insert(envelope, [], 0.05).map(([x0, y0, z0, x1, y1, z1]) =>
   [x0 - holderCenterX, y0, z0, x1 - holderCenterX, y1, z1]);
 const testedFit = { lateral: 0.25, overhead: 0.35 };
 // Keep relief and borders off the backing seam even at zero border gap.

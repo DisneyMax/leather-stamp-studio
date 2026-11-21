@@ -1108,7 +1108,9 @@ test('keyed insert centers SVG relief on the seated holder, with separate holder
     Math.max(...vertices.map(p => p[axis])),
   ];
   expect(bounds(points, 0)).toEqual([-22, 18]);
-  expect(bounds(points, 1)).toEqual([-20, 20]);
+  const [leftWing, rightWing] = bounds(points, 1);
+  expect(leftWing).toBeCloseTo(-19.95, 5);
+  expect(rightWing).toBeCloseTo(19.95, 5);
   expect(bounds(top, 0)).toEqual([-13.5, 13.5]);
   const [minY, maxY] = bounds(top, 1);
   expect(minY + maxY).toBeCloseTo(0, 5);
