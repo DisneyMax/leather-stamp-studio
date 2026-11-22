@@ -1157,3 +1157,31 @@ test('modular offset, chamfer, border and explicit placement preserve a closed i
     expect((Math.min(...coords) + Math.max(...coords)) / 2).toBeCloseTo(center, 4);
   }
 });
+
+test('use SVG size preserves physical scale, expands the base and restores the saved mode', async ({ page }) => {
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="12cm" height="99.73mm" viewBox="10 20 120 99.73"><rect x="10" y="20" width="120" height="99.73"/></svg>';
+  await load(page, svg);
+  await page.getByRole('radio', { name: 'Use SVG size' }).check();
+  await expect(page.locator('#sizeSummary')).toContainText('120.00 × 99.73 mm');
+  await expect(page.locator('#width')).toHaveValue('128');
+  await expect(page.locator('#height')).toHaveValue('108');
+  const project = JSON.parse(await download(page, '#save'));
+  expect(project.settings.artSizing).toBe('native');
+  await load(page, project.svg, project.settings);
+  await expect(page.getByRole('radio', { name: 'Use SVG size' })).toBeChecked();
+  await generate(page);
+  expectClosedMesh(parseSTL(await download(page, '#export')));
+});
+
+test('imports a stroke-only outline around filled artwork without filling the outline', async ({ page }) => {
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="40mm" height="40mm" viewBox="0 0 40 40"><rect x="4" y="4" width="32" height="32" fill="none" stroke="red" stroke-width="2"/><rect x="16" y="16" width="8" height="8"/></svg>';
+  await load(page, svg);
+  await page.getByRole('radio', { name: 'Use SVG size' }).check();
+  await expect(page.locator('#sizeSummary')).toContainText('34.00 × 34.00 mm');
+  await generate(page);
+  const triangles = parseSTL(await download(page, '#export'));
+  expectClosedMesh(triangles);
+  expect(surfaceHeight(triangles, 16, 0)).toBe(7.5);
+  expect(surfaceHeight(triangles, 8, 0)).toBe(6);
+  expect(surfaceHeight(triangles, 0, 0)).toBe(7.5);
+});
