@@ -1168,7 +1168,8 @@ function syncBorderOutlines(selected=$('borderOutline').value){
  }
  field.replaceChildren(new Option(choices.size?'Choose a closed stroke':'No closed stroke-only paths found',''),
    ...[...choices].map(([id,label])=>new Option(label,id)));
- field.value=selected|| (choices.size===1?[...choices.keys()][0]:'');
+ field.value=choices.has(selected)?selected:(choices.size===1?choices.keys().next().value:'');
+ field.disabled=!choices.size;
 }
 function syncBorderUI(shape){
  syncBorderEdgeUI();
@@ -1231,7 +1232,10 @@ function prepareBorder(baseTree,inside,outline){
  const borderEdgeSize=borderEdge==='sharp'?0:getNumber('borderEdgeSize');
  let border;
  if(placement==='svg'){
-   if(!outline)throw Error('Choose a closed SVG stroke for the border.');
+   if(!outline){
+     if($('borderOutline').disabled)throw Error('This SVG has no eligible border outline. Use a closed solid stroke with no fill, or choose a different border placement.');
+     throw Error('Select an outline in Add border → SVG outline.');
+   }
    const C=window.ClipperLib;
    const band=new C.ClipperOffset(2,0.01*CS),loops=[];
    band.AddPath(cleanLoop(outline),C.JoinType.jtRound,C.EndType.etClosedLine);

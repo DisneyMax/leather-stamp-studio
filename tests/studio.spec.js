@@ -1212,3 +1212,17 @@ test('a selected SVG stroke becomes an independently adjustable border', async (
   await load(page, project.svg, project.settings);
   await expect(page.locator('#borderOutline')).toHaveValue('0');
 });
+
+test('a sole SVG outline replaces an obsolete saved selection', async ({ page }) => {
+  const svg = artwork('<rect id="heart" x="2" y="2" width="28" height="28" fill="none" stroke="red"/><rect x="12" y="12" width="8" height="8"/>');
+  const settings = { borderEnabled: true, borderPlacement: 'svg', borderOutline: '17' };
+  await load(page, svg, settings);
+  await expect(page.locator('#borderOutline')).toHaveValue('0');
+  await generate(page);
+
+  await load(page, compound, settings);
+  await expect(page.locator('#borderOutline')).toBeDisabled();
+  await page.locator('#build').click();
+  await expect(page.locator('#status')).toContainText('This SVG has no eligible border outline.');
+  await expect(page.locator('#export')).toBeDisabled();
+});
