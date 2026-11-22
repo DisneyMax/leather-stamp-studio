@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
+import modular from '../../modular-geometry.js';
 import { comparisonHolders, fitClearances, holder, insert, mesh, parts, stl, translate } from './generate.mjs';
 
 function collides(a, b) {
@@ -112,3 +113,16 @@ for (const { lateral, overhead } of [{ lateral: 0.20, overhead: 0.20 }, ...compa
     }
   });
 }
+
+test('recessed backing keeps the tested wings and slides into the existing holder', () => {
+  const { embossingBacking, insertBacking, testedFit, floor, rim, envelope, holderCenterX } = modular;
+  assert.deepEqual(embossingBacking.slice(1), insertBacking.slice(1));
+  const receiver = holder(testedFit.lateral, envelope, testedFit.overhead);
+  const seated = embossingBacking.map(box => translate(box, [holderCenterX, 0, floor]));
+  for (const box of seated) {
+    const swept = [box[0] - envelope, ...box.slice(1)];
+    assert.ok(receiver.every(part => !collides(swept, part)));
+  }
+  assert.equal(seated[0][3], receiver[1][0]);
+  assert.equal(seated[0][5] - rim, 1.5);
+});

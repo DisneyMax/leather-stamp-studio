@@ -147,7 +147,7 @@
 </section>
 <section class="ui-section"><h2>02 / Stamp setup</h2>
 <div class="field"><label for="construction">Stamp construction</label><select id="construction" aria-describedby="modularHelp"><option value="solid">Solid stamp</option><option value="modular">Keyed modular insert</option></select>
-<p class="hint" id="modularHelp" hidden>Keyed-40-v1 · 40 × 40 mm insert with a fixed backing. Artwork centers on the assembled 44 × 44 mm holder. The holder has 0.25 mm clearance per side and 0.35 mm above the tongues.</p></div>
+<p class="hint" id="modularHelp" hidden>Keyed-40-v1 · 40 × 40 mm insert with fixed keyed wings. Artwork centers on the assembled 44 × 44 mm holder. The holder has 0.25 mm clearance per side and 0.35 mm above the tongues.</p></div>
 <div class="field"><label for="mode">Impression</label><select id="mode" aria-describedby="impressionHelp"><option value="raised">Debossing (raised stamp)</option><option value="recessed">Embossing (recessed die)</option></select><p class="hint" id="impressionHelp"></p></div>
 <div class="check"><input id="mirror" aria-describedby="mirrorHelp" type="checkbox" checked><label for="mirror">Mirror artwork for stamping</label></div>
 <p class="hint" id="mirrorHelp">Reverses the stamp face so text reads correctly on leather. Turn it off if your SVG is already reversed.</p>
@@ -199,7 +199,7 @@
 <p class="hint">The defaults are our tested starting values. Adjust only if you need a different impression depth, clearance or edge detail.</p>
 <div class="pair">
 <div class="field" id="solidThickness"><label for="base">Base thickness (mm)</label><input id="base" type="number" min="2" max="25" step="0.5" value="6"></div>
-<div class="field"><label for="depth">Impression depth (mm)</label><input id="depth" type="number" min="0.2" max="5" step="0.1" value="1.5"></div>
+<div class="field"><label for="depth">Impression depth (mm)</label><input id="depth" aria-describedby="modularDepthHelp" type="number" min="0.2" max="5" step="0.1" value="1.5"><p class="hint" id="modularDepthHelp" hidden>The embossing face clears the holder rim by 1.5 mm. Use a cavity depth of 0.2–2.5 mm.</p></div>
 <div class="field"><label for="margin">Artwork margin (mm)</label><input id="margin" type="number" min="0.5" max="30" step="0.5" value="4"></div>
 <div class="field" id="bevelField"><label for="bevel">Edge size (mm)</label><input id="bevel" type="number" min="0" max="2" step="0.05" value="0.25"></div>
 </div>
@@ -1110,7 +1110,9 @@ function prepareBorder(baseTree,inside){
 function prepareDesign(compareOffset=false,preview=false){
  const [w,h,kind]=sizingBase();
  const useInsert=isModular();
- if(useInsert&&$('mode').value!=='raised')throw Error('Keyed modular inserts require Debossing (raised stamp).');
+ const backing=useInsert
+   ? ($('mode').value==='raised'?modular.insertBacking:modular.embossingBacking)
+   : null;
  const margin=getNumber('margin'),curve=getNumber('curve');
  const corner=useInsert?0:getNumber('corner'),accuracy=getNumber('tolerance');
  if(w<10||w>200||h<10||h>200)throw Error('Base width and height must be between 10 and 200 mm.');
@@ -1128,7 +1130,7 @@ function prepareDesign(compareOffset=false,preview=false){
  if(kind==='circle')for(const pt of raw.points){const rx=w/2-margin,ry=h/2-margin;if(rx<=0||ry<=0||(pt.x/rx)**2+(pt.y/ry)**2>1.00001)throw new ArtworkSizeError('Artwork extends beyond the safe area of the ellipse base. Reduce artwork size or margin, or choose a rectangular base.');}
  const outline=baseOutline(kind,w,h,corner,raw.points,margin);
  const designArea=baseLoops(outline,Math.min(curve,96));
- const [core]=useInsert?modular.insertBacking:[];
+ const [core]=backing??[];
  const baseP=useInsert?[rectPath(core[0],core[1],core[3],core[4])]:designArea;
  const originalArtP=optimized.shapes.flatMap(shape=>shapeLoops(shape,3));
  if(!$('designOffset').validity.valid)
@@ -1165,7 +1167,7 @@ function prepareDesign(compareOffset=false,preview=false){
  let borderDesign,borderError;
  try{borderDesign=prepareBorder(useInsert?region(C.ClipType.ctUnion,designArea):baseTree,inside)}
  catch(error){if(!preview)throw error;borderError=error.message}
- return {baseTree,inside,artwork,artP,w,h,kind,shapes,raw,optimized,effectiveTolerance,offsetMm,offset,changes,...borderDesign,borderError,insertBacking:useInsert?modular.mesh(modular.insertBacking):null};
+ return {baseTree,inside,artwork,artP,w,h,kind,shapes,raw,optimized,effectiveTolerance,offsetMm,offset,changes,...borderDesign,borderError,insertBacking:backing?modular.mesh(backing):null};
 }
 
 function svgPath(loops){
@@ -1358,10 +1360,14 @@ function clearStampMeshes(){
 }
 
 function build(){try{
- const base=isModular()?modular.rim-modular.floor:getNumber('base'),depth=getNumber('depth');
+ const raised=$('mode').value==='raised';
+ const modularEmbossing=isModular()&&!raised;
+ const base=isModular()?(raised?modular.rim-modular.floor:modular.embossingFaceHeight):getNumber('base');
+ const depth=getNumber('depth');
+ if(modularEmbossing&&(depth<0.2||depth>modular.maxEmbossingDepth))
+   throw Error(`Keyed embossing cavity depth must be 0.2–${modular.maxEmbossingDepth} mm to preserve the cavity floor.`);
  if(base<2||base>25)throw Error('Base thickness must be between 2 and 25 mm.');
  if(depth<=0||depth>5)throw Error('Relief/cavity depth must be greater than 0 and at most 5 mm.');
- const raised=$('mode').value==='raised';
  if(!raised&&depth>=base)throw Error('Recessed cavity depth must be less than base thickness.');
  const edge=raised?$('edge').value:'sharp';
  const bevel=edge==='sharp'?0:getNumber('bevel');
@@ -1466,6 +1472,9 @@ function syncSimpleUI(){
  const recessed=$('mode').value==='recessed';
  $('impressionHelp').textContent=recessed?'A recessed die makes a raised impression in leather.':'A raised stamp presses the design into the leather.';
  $('baseShapeHelp').hidden=$('baseShape').value!=='contour';
+ const modularEmbossing=useInsert&&recessed;
+ $('depth').max=modularEmbossing?modular.maxEmbossingDepth:5;
+ $('modularDepthHelp').hidden=!modularEmbossing;
  $('edge').disabled=recessed;
  $('bevelField').hidden=recessed||$('edge').value==='sharp';
  $('edgeHelp').textContent=recessed?'Recessed dies use sharp cavity walls.'
@@ -1614,7 +1623,7 @@ function stlFilename(){
  const bases={rect:'rectangle',roundrect:'rounded_rectangle',circle:'ellipse',contour:'svg_contour'};
  const shape=bases[$('baseShape').value];
  const artworkName=[...stem].slice(0,50).join('')||'project_artwork';
- if(isModular())return `${artworkName}_insert_${modular.interfaceId}.stl`;
+ if(isModular())return `${artworkName}_${raised?'':'embossing_'}insert_${modular.interfaceId}.stl`;
  return `${artworkName}_${impression}_${edge}_${shape}.stl`;
 }
 $('export').onclick=()=>{if(!finalMesh||$('export').disabled)return;try{const exporter=new STLExporter();const output=exporter.parse(finalMesh,{binary:true});download(output,stlFilename(),'model/stl')}catch(e){showActionError('STL export failed: '+e.message)}};
