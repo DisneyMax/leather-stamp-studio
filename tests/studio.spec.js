@@ -1185,3 +1185,30 @@ test('imports a stroke-only outline around filled artwork without filling the ou
   expect(surfaceHeight(triangles, 8, 0)).toBe(6);
   expect(surfaceHeight(triangles, 0, 0)).toBe(7.5);
 });
+
+test('a selected SVG stroke becomes an independently adjustable border', async ({ page }) => {
+  const svg = artwork('<rect id="outer" x="2" y="2" width="28" height="28" fill="none" stroke="red"/><circle id="inner" cx="16" cy="16" r="7" fill="none" stroke="blue"/><rect x="14" y="14" width="4" height="4"/>');
+  await load(page, svg);
+  await page.locator('#borderEnabled').check();
+  await page.locator('#borderPlacement').selectOption('svg');
+  await page.locator('#borderOutline').selectOption({ label: 'outer' });
+  await expect(page.locator('#borderPreview')).toHaveAttribute('d', /^M/);
+  const border = page.locator('#borderPreview');
+  const original = await border.getAttribute('d');
+  await expect(page.locator('#borderGap')).toBeHidden();
+  await page.locator('#borderThickness').fill('1.2');
+  await expect(border).not.toHaveAttribute('d', original);
+  await page.locator('#borderHeightMode').selectOption('custom');
+  await page.locator('#borderHeight').fill('2.4');
+  await page.locator('#borderEdge').selectOption('chamfer');
+  await generate(page);
+  await expect(page.locator('#status')).toContainText('Chamfered border');
+  const triangles = parseSTL(await download(page, '#export'));
+  expectClosedMesh(triangles);
+  expect(Math.max(...triangles.flat().map(point => point[2]))).toBeCloseTo(8.4, 5);
+  expect(surfaceHeight(triangles, 0, 0)).toBe(7.5);
+  const project = JSON.parse(await download(page, '#save'));
+  expect(project.settings.borderOutline).toBe('0');
+  await load(page, project.svg, project.settings);
+  await expect(page.locator('#borderOutline')).toHaveValue('0');
+});

@@ -24,6 +24,7 @@ Open **Add border** and enable **Add a printable border**. The green ring in **2
 
 - **Follow base** uses the backing plate outline. **Distance from base edge** measures inward to the outside of the ring. Zero puts the ring flush with the base.
 - **Fit around artwork** uses the placed artwork after sizing, mirroring, and thickness adjustment. **Gap from artwork** measures to the inside of the ring. Choose a rectangle, rounded rectangle, ellipse, or SVG contour. Rounded rectangles and ellipses may use extra clearance at corners.
+- **Use SVG outline as border** lets you select a closed, solid stroke with no fill. The selected outline becomes a border that follows its original path. Adjust thickness, height, and edge profile under **Add border**. The gap comes from the SVG.
 - **SVG contour** follows the artwork's outer silhouette. Separate shapes may have separate rings, and letter counters receive no rings.
 
 Borders are available for **Debossing (raised stamp)**. They default to Sharp and the artwork height. Under **Add border**, select **Chamfered** or **Rounded** to give the border its own edge profile. After generation, the status shows the applied edge size, including any reduction needed for a valid mesh. Choose **Add border → Border height → Custom height** to set the border relief independently. For a zero artwork gap, choose **Sharp** edges for both the artwork and border and use the same height so touching relief can join. If the ring overruns the plate or collapses, reduce the gap or thickness, adjust the artwork, or enlarge the base.

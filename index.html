@@ -177,12 +177,13 @@
 <p id="borderModeHelp" class="hint">Borders default to Sharp and match the artwork height.</p>
 <div id="borderFields" hidden>
 <div class="pair">
-<div class="field"><label for="borderPlacement">Placement</label><select id="borderPlacement"><option value="artwork">Fit around artwork</option><option value="base">Follow base</option></select></div>
-<div class="field"><label for="borderShape">Shape</label><select id="borderShape"></select></div>
+<div class="field"><label for="borderPlacement">Placement</label><select id="borderPlacement"><option value="artwork">Fit around artwork</option><option value="base">Follow base</option><option value="svg">Use SVG outline as border</option></select></div>
+<div class="field" id="borderShapeField"><label for="borderShape">Shape</label><select id="borderShape"></select></div>
 </div>
+<div id="borderOutlineField" class="field" hidden><label for="borderOutline">SVG outline</label><select id="borderOutline"></select></div>
 <div class="pair">
 <div class="field"><label for="borderThickness">Border thickness (mm)</label><input type="number" id="borderThickness" min="0.30" max="5" step="any" value="1" required></div>
-<div class="field"><label for="borderGap" id="borderGapLabel">Gap from artwork (mm)</label><input type="number" id="borderGap" aria-describedby="borderHelp" min="0" max="20" step="any" value="2" required></div>
+<div class="field" id="borderGapField"><label for="borderGap" id="borderGapLabel">Gap from artwork (mm)</label><input type="number" id="borderGap" aria-describedby="borderHelp" min="0" max="20" step="any" value="2" required></div>
 </div>
 <p id="borderHelp" class="hint"></p>
 <div class="pair" id="borderHeightControls" hidden>
@@ -390,11 +391,12 @@ async function acceptSVG(file){
   status.className='';$('export').disabled=true;readyToGenerate('Artwork loaded');
   refreshAspectFromSVG();if($('customArt').checked)setCustomFromFit();
   syncSizingUI();
+  syncBorderOutlines('');
   showDesignView(true);
  }catch(e){showLoadError(e)}
 }
 $('file').addEventListener('change',e=>acceptSVG(e.target.files?.[0]));
-$('demo').onclick=()=>{svgText=sample;artworkFilename=sampleFilename;$('file').value='';fileLabel(null);status.textContent='Paw print loaded. Click Generate 3D stamp.';status.className='';$('export').disabled=true;readyToGenerate();refreshAspectFromSVG();if($('customArt').checked)setCustomFromFit();syncSizingUI();scheduleDesignPreview()};
+$('demo').onclick=()=>{svgText=sample;artworkFilename=sampleFilename;$('file').value='';fileLabel(null);status.textContent='Paw print loaded. Click Generate 3D stamp.';status.className='';$('export').disabled=true;readyToGenerate();refreshAspectFromSVG();if($('customArt').checked)setCustomFromFit();syncSizingUI();syncBorderOutlines('');scheduleDesignPreview()};
 const dz=$('dropzone');dz.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();$('file').click()}});
 for(const eventName of ['dragenter','dragover'])dz.addEventListener(eventName,e=>{e.preventDefault();dz.classList.add('dragging')});
 for(const eventName of ['dragleave','drop'])dz.addEventListener(eventName,e=>{e.preventDefault();dz.classList.remove('dragging')});
@@ -469,7 +471,7 @@ function normalizeShapes(text){
  const data=loader.parse(text),C=window.ClipperLib,scale=1000;
  const clip=viewport?rectPath(...viewport.bounds,scale):null;
  const shapes=[];
- for(const path of data.paths){
+ for(const [index,path] of data.paths.entries()){
   const style=path.userData?.style||{};
   if(style.display==='none'||style.visibility==='hidden'||style.opacity===0)continue;
   const fillLoops=[];
@@ -485,6 +487,7 @@ function normalizeShapes(text){
   const stroke=style.stroke&&style.stroke!=='none'&&style.strokeOpacity!==0&&style.strokeWidth>0;
   const dash=path.userData?.node?.getAttribute('stroke-dasharray');
   if(stroke&&dash&&dash!=='none')throw Error('Convert dashed SVG strokes to filled outlines before importing.');
+  const firstShape=shapes.length;
   const painted=[];
   for(const [loops,rule] of [[fillLoops,fill],[stroke?strokeOutlines(path,style,viewport,scale,C):[],C.PolyFillType.pftNonZero]]){
    if(!loops.length)continue;
@@ -524,6 +527,13 @@ function normalizeShapes(text){
    shapes.push(shape);
   }
   visit(tree);
+  if(stroke&&style.fill==='none'&&path.subPaths.length===1){
+   const sub=path.subPaths[0],points=sub.getPoints(48);
+   if(points.length>=3&&(sub.autoClose||points[0].distanceToSquared(points.at(-1))<1e-12)){
+     const outline={id:String(index),points,label:path.userData.node?.id||`Stroke ${index+1} (${style.stroke})`};
+     for(const shape of shapes.slice(firstShape))shape.outline=outline;
+   }
+  }
  }
  if(!shapes.length)throw Error('No visible vector shapes found. Convert text to outlines.');
  return shapes;
@@ -551,8 +561,9 @@ function getArtwork(shapes,w,h,margin,mirror,sizing,kind){
  if(!Number.isFinite(artW)||!Number.isFinite(artH)||artW<.5||artH<.5||artW>200||artH>200)throw new ArtworkSizeError('Artwork width and height must be between 0.5 and 200 mm.');
  if(artW>availW+1e-6||artH>availH+1e-6)throw new ArtworkSizeError(`Artwork ${artW.toFixed(2)} × ${artH.toFixed(2)} mm exceeds the ${availW.toFixed(2)} × ${availH.toFixed(2)} mm area inside the base margin. Increase the base, reduce artwork size, or reduce the margin.`);
  const sx=artW/b.dx,sy=artH/b.dy;
- const transformed=[];for(const shape of shapes){const clone=shape.clone();const change=path=>{for(const c of path.curves){for(const name of ['v0','v1','v2','v3']){const p=c[name];if(p?.isVector2){p.x=(p.x-cx)*sx*(mirror?-1:1);p.y=-(p.y-cy)*sy}}}};change(clone);for(const hole of clone.holes)change(hole);transformed.push(clone)}
- const points=b.pts.map(p=>new THREE.Vector2((p.x-cx)*sx*(mirror?-1:1),-(p.y-cy)*sy));return {transformed,points,artW,artH,ratio:b.dx/b.dy};
+ const sizePoint=p=>new THREE.Vector2((p.x-cx)*sx*(mirror?-1:1),-(p.y-cy)*sy);
+ const transformed=[];for(const shape of shapes){const clone=shape.clone();const change=path=>{for(const c of path.curves){for(const name of ['v0','v1','v2','v3']){const p=c[name];if(p?.isVector2)p.copy(sizePoint(p))}}};change(clone);for(const hole of clone.holes)change(hole);transformed.push(clone)}
+ const points=b.pts.map(sizePoint);return {transformed,points,sizePoint,artW,artH,ratio:b.dx/b.dy};
 }
 let currentAspect=1;
 function nativeSizing(shapes){
@@ -1135,7 +1146,7 @@ function placeArtworkPaths(loops,x,y,rotation){
  })));
 }
 
-const defaultBorder={borderEnabled:false,borderPlacement:'artwork',borderShape:'roundrect',borderThickness:1,borderGap:2,borderHeightMode:'same',borderHeight:1.5,borderEdge:'sharp',borderEdgeSize:0.25};
+const defaultBorder={borderEnabled:false,borderPlacement:'artwork',borderShape:'roundrect',borderOutline:'',borderThickness:1,borderGap:2,borderHeightMode:'same',borderHeight:1.5,borderEdge:'sharp',borderEdgeSize:0.25};
 const artworkBorderShapes=[['roundrect','Rounded rectangle'],['rect','Rectangle'],['ellipse','Circle / ellipse'],['contour','SVG contour']];
 function syncBorderHeightUI(){
  const visible=$('borderEnabled').checked&&$('mode').value==='raised';
@@ -1147,12 +1158,29 @@ function syncBorderEdgeUI(){
  $('borderEdgeSizeField').hidden=$('borderEdge').value==='sharp';
 }
 $('borderEdge').addEventListener('change',syncBorderEdgeUI);
+function syncBorderOutlines(selected=$('borderOutline').value){
+ const field=$('borderOutline');
+ const choices=new Map();
+ if($('borderPlacement').value==='svg'){
+   try{
+     for(const shape of designShapes())if(shape.outline)choices.set(shape.outline.id,shape.outline.label);
+   }catch{/* The design preview reports SVG import errors. */}
+ }
+ field.replaceChildren(new Option(choices.size?'Choose a closed stroke':'No closed stroke-only paths found',''),
+   ...[...choices].map(([id,label])=>new Option(label,id)));
+ field.value=selected|| (choices.size===1?[...choices.keys()][0]:'');
+}
 function syncBorderUI(shape){
  syncBorderEdgeUI();
  syncBorderHeightUI();
  const enabled=$('borderEnabled').checked;
  const recessed=$('mode').value==='recessed';
  const followsBase=$('borderPlacement').value==='base';
+ const usesOutline=$('borderPlacement').value==='svg';
+ $('borderOutlineField').hidden=!usesOutline;
+ $('borderGapField').hidden=usesOutline;
+ $('borderShapeField').hidden=usesOutline;
+ syncBorderOutlines();
  const options=followsBase?[['match','Match base']]:artworkBorderShapes;
  const select=$('borderShape');
  select.replaceChildren(...options.map(([value,label])=>new Option(label,value)));
@@ -1164,7 +1192,7 @@ function syncBorderUI(shape){
  }
  $('borderFields').hidden=!enabled;
  $('borderGapLabel').textContent=followsBase?'Distance from base edge (mm)':'Gap from artwork (mm)';
- $('borderHelp').textContent=followsBase
+ $('borderHelp').textContent=usesOutline?'Thickness follows the original SVG stroke centerline. The SVG determines the gap.':followsBase
    ?'Measure inward from the base edge to the outside of the border.'
    :'Measure from the artwork to the inside of the border.'+
      (select.value==='contour'?' SVG contour can create separate rings around separate shapes.':'');
@@ -1177,20 +1205,20 @@ $('borderPlacement').addEventListener('change',()=>syncBorderUI());
 for(const id of ['borderEnabled','borderShape','mode'])$(id).addEventListener('change',()=>syncBorderUI($('borderShape').value));
 syncBorderUI();
 
-function prepareBorder(baseTree,inside){
+function prepareBorder(baseTree,inside,outline){
  if(!$('borderEnabled').checked)return {};
  if(typeof stampBorder!=='function')throw Error('The border library is out of date. Reload the page and try again.');
  if($('mode').value!=='raised')throw Error('Borders require Debossing (raised stamp). Turn off the border or change the impression.');
  const placement=$('borderPlacement').value,shape=$('borderShape').value;
- if(!((placement==='base'&&shape==='match')||(placement==='artwork'&&artworkBorderShapes.some(([value])=>value===shape)))){
+ if(placement!=='svg'&&!((placement==='base'&&shape==='match')||(placement==='artwork'&&artworkBorderShapes.some(([value])=>value===shape)))){
    throw Error('Choose a valid border placement and shape.');
  }
  if(!$('borderThickness').validity.valid)throw Error('Enter a border thickness from 0.30 to 5.00 mm.');
- if(!$('borderGap').validity.valid)throw Error('Enter a border gap or inset from 0 to 20 mm.');
+ if(placement!=='svg'&&!$('borderGap').validity.valid)throw Error('Enter a border gap or inset from 0 to 20 mm.');
  const heightMode=$('borderHeightMode').value;
  if(heightMode!=='same'&&heightMode!=='custom')throw Error('Select Same as artwork or Custom height for the border.');
  if(heightMode==='custom'&&!$('borderHeight').validity.valid)throw Error('Enter a custom border height from 0.20 to 5.00 mm.');
- const relief=getNumber('depth'),gap=getNumber('borderGap');
+ const relief=getNumber('depth'),gap=placement==='svg'?0:getNumber('borderGap');
  const borderHeight=heightMode==='same'?relief:getNumber('borderHeight');
  if(placement==='artwork'&&gap===0&&borderHeight!==relief){
    throw Error('A zero artwork gap requires the border and artwork to have the same height. Increase the gap or select Same as artwork.');
@@ -1201,7 +1229,22 @@ function prepareBorder(baseTree,inside){
  if(placement==='artwork'&&gap===0&&borderEdge!=='sharp')throw Error('A zero artwork gap requires Sharp border edges. Increase the gap or select Sharp.');
  const thickness=getNumber('borderThickness');
  const borderEdgeSize=borderEdge==='sharp'?0:getNumber('borderEdgeSize');
- const border=stampBorder(baseTree,inside,{placement,shape,gap,thickness,sharp:$('edge').value==='sharp'});
+ let border;
+ if(placement==='svg'){
+   if(!outline)throw Error('Choose a closed SVG stroke for the border.');
+   const C=window.ClipperLib;
+   const band=new C.ClipperOffset(2,0.01*CS),loops=[];
+   band.AddPath(cleanLoop(outline),C.JoinType.jtRound,C.EndType.etClosedLine);
+   band.Execute(loops,thickness*CS/2);
+   border=region(C.ClipType.ctUnion,cleanOffsetRings(loops));
+   if(!rings(border).some(ring=>ring.hole))throw Error('SVG border thickness closes the outline. Reduce border thickness.');
+   if(paths(region(C.ClipType.ctDifference,paths(border),paths(baseTree))).length)
+     throw Error('The SVG border extends beyond the base. Enlarge the base or reduce border thickness.');
+   if(paths(region(C.ClipType.ctIntersection,paths(border),paths(inside))).length)
+     throw Error('The SVG border overlaps the artwork. Reduce border thickness or design offset.');
+ }else{
+   border=stampBorder(baseTree,inside,{placement,shape,gap,thickness,sharp:$('edge').value==='sharp'});
+ }
  return {border,borderHeight,borderEdge,borderEdgeSize,borderThickness:thickness};
 }
 
@@ -1221,7 +1264,11 @@ function prepareDesign(compareOffset=false,preview=false){
    $('customArt').checked?{mode:'custom',width:getNumber('artWidth'),height:getNumber('artHeight')}:{mode:'fit'};
  const raw=getArtwork(shapes,w,h,margin,$('mirror').checked,sizing,kind);
  const requestedSimplify=getNumber('simplify');if(requestedSimplify<0||requestedSimplify>.5)throw Error('SVG simplification must be between 0 and 0.5 mm.');
- const effectiveTolerance=Math.max(accuracy,requestedSimplify),optimized=optimizeShapes(raw.transformed,curve,effectiveTolerance);
+ const selectedOutline=$('borderEnabled').checked&&$('borderPlacement').value==='svg'
+   ?shapes.find(shape=>shape.outline?.id===$('borderOutline').value)?.outline:null;
+ const reliefShapes=selectedOutline?raw.transformed.filter((_,index)=>shapes[index].outline!==selectedOutline):raw.transformed;
+ if(!reliefShapes.length)throw Error('The SVG needs separate artwork in addition to the border outline.');
+ const effectiveTolerance=Math.max(accuracy,requestedSimplify),optimized=optimizeShapes(reliefShapes,curve,effectiveTolerance);
  // The source artwork bounds fit in the base's rectangular safe area. For an
  // elliptical base, check each actual artwork vertex against the inner ellipse.
  if(kind==='circle')for(const pt of raw.points){const rx=w/2-margin,ry=h/2-margin;if(rx<=0||ry<=0||(pt.x/rx)**2+(pt.y/ry)**2>1.00001)throw new ArtworkSizeError('Artwork extends beyond the safe area of the ellipse base. Reduce artwork size or margin, or choose a rectangular base.');}
@@ -1262,7 +1309,8 @@ function prepareDesign(compareOffset=false,preview=false){
    };
  }
  let borderDesign,borderError;
- try{borderDesign=prepareBorder(useInsert?region(C.ClipType.ctUnion,designArea):baseTree,inside)}
+ const strokeCenterline=selectedOutline?placeArtworkPaths([xyPath(selectedOutline.points.map(raw.sizePoint))],x,y,rotation)[0]:null;
+ try{borderDesign=prepareBorder(useInsert?region(C.ClipType.ctUnion,designArea):baseTree,inside,strokeCenterline)}
  catch(error){if(!preview)throw error;borderError=error.message}
  return {baseTree,inside,artwork,artP,w,h,kind,shapes,raw,optimized,effectiveTolerance,offsetMm,offset,changes,...borderDesign,borderError,insertBacking:useInsert?modular.mesh(modular.insertBacking):null};
 }
@@ -1602,13 +1650,14 @@ function applySettings(saved){
  $('nativeArt').checked=settings.artSizing==='native';
  $('fitArt').checked=!$('customArt').checked&&!$('nativeArt').checked;
  for(const id of settingIds){
-   if(settings[id]===undefined)continue;
+   if(id==='borderOutline'||settings[id]===undefined)continue;
    if($(id).type==='checkbox')$(id).checked=!!settings[id];
    else $(id).value=settings[id];
  }
  syncSizingUI();
  syncSimpleUI();
  syncBorderUI(settings.borderShape);
+ syncBorderOutlines(settings.borderOutline);
  $('designOffsetSlider').value=$('designOffset').value;
 }
 function settingsLoaded(message){
