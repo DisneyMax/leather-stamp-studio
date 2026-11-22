@@ -533,6 +533,8 @@ function normalizeShapes(text){
      const outline={id:String(index),points,label:path.userData.node?.id||`Stroke ${index+1} (${style.stroke})`};
      for(const shape of shapes.slice(firstShape))shape.outline=outline;
    }
+  }else if(!stroke&&shapes.length===firstShape+1&&shapes[firstShape].holes.length===1){
+   shapes[firstShape].outline={id:String(index),label:path.userData.node?.id||`Filled ring ${index+1} (${style.fill})`};
   }
  }
  if(!shapes.length)throw Error('No visible vector shapes found. Convert text to outlines.');
@@ -1166,7 +1168,7 @@ function syncBorderOutlines(selected=$('borderOutline').value){
      for(const shape of designShapes())if(shape.outline)choices.set(shape.outline.id,shape.outline.label);
    }catch{/* The design preview reports SVG import errors. */}
  }
- field.replaceChildren(new Option(choices.size?'Choose a closed stroke':'No closed stroke-only paths found',''),
+ field.replaceChildren(new Option(choices.size?'Choose an outline':'No closed strokes or filled rings found',''),
    ...[...choices].map(([id,label])=>new Option(label,id)));
  field.value=choices.has(selected)?selected:(choices.size===1?choices.keys().next().value:'');
  field.disabled=!choices.size;
@@ -1193,7 +1195,7 @@ function syncBorderUI(shape){
  }
  $('borderFields').hidden=!enabled;
  $('borderGapLabel').textContent=followsBase?'Distance from base edge (mm)':'Gap from artwork (mm)';
- $('borderHelp').textContent=usesOutline?'Thickness follows the original SVG stroke centerline. The SVG determines the gap.':followsBase
+ $('borderHelp').textContent=usesOutline?'The border follows the SVG. Thickness widens or narrows a stroke or filled ring.':followsBase
    ?'Measure inward from the base edge to the outside of the border.'
    :'Measure from the artwork to the inside of the border.'+
      (select.value==='contour'?' SVG contour can create separate rings around separate shapes.':'');
@@ -1233,13 +1235,27 @@ function prepareBorder(baseTree,inside,outline){
  let border;
  if(placement==='svg'){
    if(!outline){
-     if($('borderOutline').disabled)throw Error('This SVG has no eligible border outline. Use a closed solid stroke with no fill, or choose a different border placement.');
+     if($('borderOutline').disabled)throw Error('This SVG has no eligible border outline. Use a closed solid stroke with no fill or a filled ring, or choose a different border placement.');
      throw Error('Select an outline in Add border → SVG outline.');
    }
    const C=window.ClipperLib;
    const band=new C.ClipperOffset(2,0.01*CS),loops=[];
-   band.AddPath(cleanLoop(outline),C.JoinType.jtRound,C.EndType.etClosedLine);
-   band.Execute(loops,thickness*CS/2);
+   if(outline.centerline){
+     band.AddPath(cleanLoop(outline.centerline),C.JoinType.jtRound,C.EndType.etClosedLine);
+     band.Execute(loops,thickness*CS/2);
+   }else{
+     const source=paths(region(C.ClipType.ctUnion,outline.ring));
+     const area=source.reduce((sum,path)=>sum+C.Clipper.Area(path),0);
+     const perimeter=source.reduce((sum,path)=>sum+path.reduce((length,point,index)=>{
+       const next=path[(index+1)%path.length];
+       return length+Math.hypot(next.X-point.X,next.Y-point.Y);
+     },0),0);
+     // Net area divided by mean perimeter estimates the original band thickness.
+     const originalWidth=2*area/perimeter;
+     if(!(originalWidth>0))throw Error('The selected SVG ring has no usable thickness.');
+     band.AddPaths(source,C.JoinType.jtRound,C.EndType.etClosedPolygon);
+     band.Execute(loops,(thickness*CS-originalWidth)/2);
+   }
    border=region(C.ClipType.ctUnion,cleanOffsetRings(loops));
    if(!rings(border).some(ring=>ring.hole))throw Error('SVG border thickness closes the outline. Reduce border thickness.');
    if(paths(region(C.ClipType.ctDifference,paths(border),paths(baseTree))).length)
@@ -1313,8 +1329,11 @@ function prepareDesign(compareOffset=false,preview=false){
    };
  }
  let borderDesign,borderError;
- const strokeCenterline=selectedOutline?placeArtworkPaths([xyPath(selectedOutline.points.map(raw.sizePoint))],x,y,rotation)[0]:null;
- try{borderDesign=prepareBorder(useInsert?region(C.ClipType.ctUnion,designArea):baseTree,inside,strokeCenterline)}
+ const svgOutline=selectedOutline?(selectedOutline.points
+   ?{centerline:placeArtworkPaths([xyPath(selectedOutline.points.map(raw.sizePoint))],x,y,rotation)[0]}
+   :{ring:placeArtworkPaths(shapeLoops(raw.transformed[shapes.findIndex(shape=>shape.outline===selectedOutline)],3),x,y,rotation)})
+   :null;
+ try{borderDesign=prepareBorder(useInsert?region(C.ClipType.ctUnion,designArea):baseTree,inside,svgOutline)}
  catch(error){if(!preview)throw error;borderError=error.message}
  return {baseTree,inside,artwork,artP,w,h,kind,shapes,raw,optimized,effectiveTolerance,offsetMm,offset,changes,...borderDesign,borderError,insertBacking:useInsert?modular.mesh(modular.insertBacking):null};
 }
