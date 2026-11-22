@@ -107,6 +107,7 @@
 #borderPreview{fill:#8dd4be;pointer-events:none}
 #borderPanel [hidden]{display:none}
 .size-options{border:0;padding:0;margin:0 0 10px;min-width:0}
+.size-options label:has(#nativeArt){grid-column:1/-1}
 .size-options legend,.size-heading{font-size:13px;font-weight:650;color:#d8e2eb;margin:0 0 8px;padding:0}
 .size-heading{margin-top:16px;padding-top:12px;border-top:1px solid #394655}
 #borderPanel .border-toggle{display:flex;align-items:center;gap:9px;margin:0;padding:12px 15px;min-height:44px;font-size:14px;font-weight:650;cursor:pointer}
@@ -142,7 +143,7 @@
 </details>
 
 <section class="ui-section"><h2>01 / Your artwork</h2>
-<div class="field"><label for="file" class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Choose or drop SVG artwork"><strong>＋ Choose an SVG or drop it here</strong><small>Filled vector artwork works best</small><input id="file" type="file" accept=".svg,image/svg+xml"></label><div id="artworkName">Using included paw-print example</div></div>
+<div class="field"><label for="file" class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Choose or drop SVG artwork"><strong>＋ Choose an SVG or drop it here</strong><small>Use vector fills and solid strokes</small><input id="file" type="file" accept=".svg,image/svg+xml"></label><div id="artworkName">Using included paw-print example</div></div>
 <button class="secondary quiet-button" id="demo">Use example paw print</button>
 </section>
 <section class="ui-section"><h2>02 / Stamp setup</h2>
@@ -155,7 +156,8 @@
 <p class="hint" id="edgeHelp"></p>
 </section>
 <section class="ui-section"><h2>03 / Size</h2>
-<fieldset class="size-options"><legend>Artwork dimensions</legend><div class="segmented"><label><input type="radio" name="artSizing" id="fitArt" value="fit" checked> Fit to base</label><label><input type="radio" name="artSizing" id="customArt" value="custom"> Exact size</label></div>
+<fieldset class="size-options"><legend>Artwork dimensions</legend><div class="segmented"><label><input type="radio" name="artSizing" id="fitArt" value="fit" checked> Fit to base</label><label><input type="radio" name="artSizing" id="customArt" value="custom"> Exact size</label><label><input type="radio" name="artSizing" id="nativeArt" value="native" aria-describedby="nativeSizeHelp"> Use SVG size</label></div>
+<p id="nativeSizeHelp" class="hint"></p>
 <div id="exactSizeFields" class="exact-fields">
 <div class="pair"><div class="field"><label for="artWidth">Artwork width (mm)</label><input id="artWidth" type="number" min="0.5" max="200" step="0.5" value="32" disabled></div><div class="field"><label for="artHeight">Artwork height (mm)</label><input id="artHeight" type="number" min="0.5" max="200" step="0.5" value="32" disabled></div></div>
 <div class="check"><input id="lockAspect" type="checkbox" checked><label for="lockAspect">Keep original proportions</label></div>
@@ -233,7 +235,7 @@
 <details id="firstStampGuide" class="nested-advanced">
 <summary>First stamp guide</summary>
 <ol class="hint">
-<li><strong>Start with the paw print.</strong> Choose <b>Use example paw print</b> and leave <b>Fit to base</b> selected. For your own SVG, use filled shapes and convert text and strokes to outlines in your vector editor.</li>
+<li><strong>Start with the paw print.</strong> Choose <b>Use example paw print</b> and leave <b>Fit to base</b> selected. For your own SVG, use vector fills and solid strokes. Convert text and dashed strokes to outlines in your vector editor.</li>
 <li><strong>Choose the impression.</strong> Start with <b>Debossing (raised stamp)</b> to press the paw into the leather. Choose <b>Embossing (recessed die)</b> for a raised impression. Keep <b>Mirror artwork for stamping</b> on for artwork that should read correctly on the leather. If the SVG is already reversed, turn it off.</li>
 <li><strong>Review the design.</strong> Open <b>2D Design</b> to check placement and holes. Turn on <b>Check small features</b> for estimated trouble spots. If you adjust thickness, use <b>Show thickness changes</b> to see what was added or removed.</li>
 <li><strong>Generate and inspect.</strong> Select <b>Generate 3D stamp</b>, check the 3D preview, and select <b>Download STL</b> once the mesh passes validation. In Bambu Studio, import in millimeters, verify the dimensions, and inspect the sliced layers for missing details or filled holes. Test the printed stamp on a leather offcut.</li>
@@ -330,8 +332,8 @@ function sizingBase(){
  return isModular() ? [...modular.artworkSize,'rect'] :
    [getNumber('width'),getNumber('height'),$('baseShape').value];
 }
-function rectPath(x0,y0,x1,y1){
- return [[x0,y0],[x1,y0],[x1,y1],[x0,y1]].map(([x,y])=>({X:Math.round(x*CS),Y:Math.round(y*CS)}));
+function rectPath(x0,y0,x1,y1,scale=CS){
+ return [[x0,y0],[x1,y0],[x1,y1],[x0,y1]].map(([x,y])=>({X:Math.round(x*scale),Y:Math.round(y*scale)}));
 }
 function showPrintabilityNote(offset){
  const parts=[];
@@ -387,42 +389,119 @@ async function acceptSVG(file){
   svgText=txt;artworkFilename=file.name;fileLabel(file.name);status.textContent=`Loaded ${file.name}. Click Generate 3D stamp.`;
   status.className='';$('export').disabled=true;readyToGenerate('Artwork loaded');
   refreshAspectFromSVG();if($('customArt').checked)setCustomFromFit();
+  syncSizingUI();
   showDesignView(true);
  }catch(e){showLoadError(e)}
 }
 $('file').addEventListener('change',e=>acceptSVG(e.target.files?.[0]));
-$('demo').onclick=()=>{svgText=sample;artworkFilename=sampleFilename;$('file').value='';fileLabel(null);status.textContent='Paw print loaded. Click Generate 3D stamp.';status.className='';$('export').disabled=true;readyToGenerate();refreshAspectFromSVG();if($('customArt').checked)setCustomFromFit();scheduleDesignPreview()};
+$('demo').onclick=()=>{svgText=sample;artworkFilename=sampleFilename;$('file').value='';fileLabel(null);status.textContent='Paw print loaded. Click Generate 3D stamp.';status.className='';$('export').disabled=true;readyToGenerate();refreshAspectFromSVG();if($('customArt').checked)setCustomFromFit();syncSizingUI();scheduleDesignPreview()};
 const dz=$('dropzone');dz.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();$('file').click()}});
 for(const eventName of ['dragenter','dragover'])dz.addEventListener(eventName,e=>{e.preventDefault();dz.classList.add('dragging')});
 for(const eventName of ['dragleave','drop'])dz.addEventListener(eventName,e=>{e.preventDefault();dz.classList.remove('dragging')});
 dz.addEventListener('drop',e=>acceptSVG(e.dataTransfer?.files?.[0]));
 function getNumber(id){const n=Number($(id).value);if(!Number.isFinite(n))throw Error('Invalid value for '+id);return n}
 function validateSvg(text){const doc=new DOMParser().parseFromString(text,'image/svg+xml');if(doc.querySelector('parsererror')||doc.documentElement.localName!=='svg')throw Error('Invalid SVG file');if(doc.querySelector('script,foreignObject,image,use,filter'))throw Error('For this POC, convert SVG to plain filled paths; external images, symbols, filters and scripts are not supported.');return doc}
+const mmPerPixel=25.4/96;
+function svgPhysicalViewport(svg){
+ const units={mm:1,cm:10,in:25.4,pt:25.4/72,pc:25.4/6,px:mmPerPixel};
+ const length=name=>{
+   const match=svg.getAttribute(name)?.trim().match(/^([+]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[-+]?\d+)?)(mm|cm|in|pt|pc|px)?$/i);
+   return match?Number(match[1])*units[(match[2]||'px').toLowerCase()]:0;
+ };
+ const width=length('width'),height=length('height');
+ if(!(width>0&&height>0&&Number.isFinite(width)&&Number.isFinite(height)))return null;
+ const viewBox=svg.getAttribute('viewBox')?.trim().split(/[\s,]+/).map(Number);
+ if(viewBox?.length!==4||!viewBox.every(Number.isFinite)||viewBox[2]<=0||viewBox[3]<=0)
+   return {width,height,sx:mmPerPixel,sy:mmPerPixel,bounds:[0,0,width/mmPerPixel,height/mmPerPixel]};
+ const [x,y,w,h]=viewBox;
+ const [align,fit]=(svg.getAttribute('preserveAspectRatio')||'xMidYMid meet').trim().replace(/^defer\s+/,'').split(/\s+/);
+ if(align==='none')return {width,height,sx:width/w,sy:height/h,bounds:[x,y,x+w,y+h]};
+ const scale=fit==='slice'?Math.max(width/w,height/h):Math.min(width/w,height/h);
+ const ax=align.includes('xMin')?0:align.includes('xMax')?1:0.5;
+ const ay=align.includes('YMin')?0:align.includes('YMax')?1:0.5;
+ const left=x-(width/scale-w)*ax,top=y-(height/scale-h)*ay;
+ return {width,height,sx:scale,sy:scale,bounds:[left,top,left+width/scale,top+height/scale]};
+}
+
+function strokeOutlines(path,style,viewport,scale,C){
+ const node=path.userData?.node;
+ const nonScaling=(node?.getAttribute('vector-effect')||'')==='non-scaling-stroke';
+ const sx=viewport?viewport.sx/mmPerPixel:1,sy=viewport?viewport.sy/mmPerPixel:1;
+ let transform=new DOMMatrix();
+ if(!nonScaling)for(let n=node;n;n=n.parentElement){
+   const list=n.transform?.baseVal;
+   let local=new DOMMatrix();
+   for(let i=0;list&&i<list.numberOfItems;i++)local=local.multiply(list.getItem(i).matrix);
+   transform=local.multiply(transform);
+ }
+ const inverse=transform.inverse();
+ const loops=[];
+ const joins={round:C.JoinType.jtRound,bevel:C.JoinType.jtSquare,miter:C.JoinType.jtMiter};
+ const caps={round:C.EndType.etOpenRound,square:C.EndType.etOpenSquare,butt:C.EndType.etOpenButt};
+ const quantize=({x,y})=>({X:Math.round(x*scale),Y:Math.round(y*scale)});
+ for(const sub of path.subPaths){
+   const points=sub.getPoints(48).map(({x,y})=>
+     nonScaling?{x:x*sx,y:y*sy}:inverse.transformPoint({x,y}));
+   if(points.length<2||points.some(p=>!Number.isFinite(p.x)||!Number.isFinite(p.y)))continue;
+   const closed=points[0].x===points.at(-1).x&&points[0].y===points.at(-1).y;
+   const offset=new C.ClipperOffset(style.strokeMiterLimit,0.05*scale);
+   offset.AddPath(points.map(quantize),joins[style.strokeLineJoin]??C.JoinType.jtMiter,
+     closed?C.EndType.etClosedLine:(caps[style.strokeLineCap]??C.EndType.etOpenButt));
+   const parts=[];
+   offset.Execute(parts,style.strokeWidth*scale/2);
+   for(const part of parts){
+     const transformed=part.map(({X,Y})=>quantize(nonScaling?{x:X/scale/sx,y:Y/scale/sy}:
+       transform.transformPoint({x:X/scale,y:Y/scale})));
+     // Preserve ring winding even for SVG transforms that reflect the shape.
+     if(!nonScaling&&transform.a*transform.d-transform.b*transform.c<0)transformed.reverse();
+     loops.push(transformed);
+   }
+ }
+ return loops;
+}
 // Preserve compound-path topology: holes, nested islands, and letter counters.
 // SVGLoader.createShapes can misclassify nested subpaths in Illustrator compound paths.
 function normalizeShapes(text){
- validateSvg(text);
+ const viewport=svgPhysicalViewport(validateSvg(text).documentElement);
  if(!window.ClipperLib)throw Error('The polygon library could not load. Connect to the internet and reopen this HTML file.');
- const loader=new SVGLoader(),data=loader.parse(text),C=window.ClipperLib,scale=1000;
+ const loader=new SVGLoader();
+ loader.defaultDPI=96;
+ const data=loader.parse(text),C=window.ClipperLib,scale=1000;
+ const clip=viewport?rectPath(...viewport.bounds,scale):null;
  const shapes=[];
  for(const path of data.paths){
   const style=path.userData?.style||{};
-  if(style.display==='none'||style.visibility==='hidden'||style.fill==='none')continue;
-  const loops=[];
-  for(const sub of path.subPaths){
+  if(style.display==='none'||style.visibility==='hidden'||style.opacity===0)continue;
+  const fillLoops=[];
+  if(style.fill!=='none'&&style.fillOpacity!==0)for(const sub of path.subPaths){
    const pts=sub.getPoints(48),loop=[];
    for(const p of pts){const q={X:Math.round(p.x*scale),Y:Math.round(p.y*scale)};
     if(!loop.length||loop[loop.length-1].X!==q.X||loop[loop.length-1].Y!==q.Y)loop.push(q);
    }
    if(loop.length>1&&loop[0].X===loop[loop.length-1].X&&loop[0].Y===loop[loop.length-1].Y)loop.pop();
-   if(loop.length>=3)loops.push(loop);
+   if(loop.length>=3)fillLoops.push(loop);
   }
-  if(!loops.length)continue;
-  const clipper=new C.Clipper();clipper.StrictlySimple=true;
-  clipper.AddPaths(loops,C.PolyType.ptSubject,true);
-  const tree=new C.PolyTree();
   const fill=(style.fillRule||style['fill-rule']||'nonzero').toLowerCase()==='evenodd'?C.PolyFillType.pftEvenOdd:C.PolyFillType.pftNonZero;
-  if(!clipper.Execute(C.ClipType.ctUnion,tree,fill,fill))throw Error('Could not resolve compound SVG path');
+  const stroke=style.stroke&&style.stroke!=='none'&&style.strokeOpacity!==0&&style.strokeWidth>0;
+  const dash=path.userData?.node?.getAttribute('stroke-dasharray');
+  if(stroke&&dash&&dash!=='none')throw Error('Convert dashed SVG strokes to filled outlines before importing.');
+  const painted=[];
+  for(const [loops,rule] of [[fillLoops,fill],[stroke?strokeOutlines(path,style,viewport,scale,C):[],C.PolyFillType.pftNonZero]]){
+   if(!loops.length)continue;
+   const clipper=new C.Clipper();clipper.StrictlySimple=true;
+   clipper.AddPaths(loops,C.PolyType.ptSubject,true);
+   if(clip)clipper.AddPath(clip,C.PolyType.ptClip,true);
+   const result=[];
+   if(!clipper.Execute(clip?C.ClipType.ctIntersection:C.ClipType.ctUnion,result,rule,C.PolyFillType.pftNonZero))
+     throw Error('Could not resolve SVG path.');
+   painted.push(...result);
+  }
+  if(!painted.length)continue;
+  const clipper=new C.Clipper();clipper.StrictlySimple=true;
+  clipper.AddPaths(painted,C.PolyType.ptSubject,true);
+  const tree=new C.PolyTree();
+  if(!clipper.Execute(C.ClipType.ctUnion,tree,C.PolyFillType.pftNonZero,C.PolyFillType.pftNonZero))
+    throw Error('Could not resolve SVG path.');
   const makePath=(poly,shape)=>{if(poly.length<3)return;const pts=poly.map(q=>new THREE.Vector2(q.X/scale,q.Y/scale));
    const target=shape?new THREE.Path(pts):new THREE.Shape(pts);return target};
   function visit(node){
@@ -446,7 +525,7 @@ function normalizeShapes(text){
   }
   visit(tree);
  }
- if(!shapes.length)throw Error('No filled shapes found. Convert text and strokes to outlines.');
+ if(!shapes.length)throw Error('No visible vector shapes found. Convert text to outlines.');
  return shapes;
 }
 function artworkBounds(shapes){
@@ -476,7 +555,27 @@ function getArtwork(shapes,w,h,margin,mirror,sizing,kind){
  const points=b.pts.map(p=>new THREE.Vector2((p.x-cx)*sx*(mirror?-1:1),-(p.y-cy)*sy));return {transformed,points,artW,artH,ratio:b.dx/b.dy};
 }
 let currentAspect=1;
-function syncSizingUI(){const custom=$('customArt').checked;for(const id of ['artWidth','artHeight'])$(id).disabled=!custom;$('margin').disabled=false;}
+function nativeSizing(shapes){
+ const viewport=svgPhysicalViewport(validateSvg(svgText).documentElement);
+ if(!viewport)throw new ArtworkSizeError('Use SVG size requires a file with a fixed width and height.');
+ const {dx,dy}=artworkBounds(shapes);
+ return {mode:'custom',width:dx*viewport.sx,height:dy*viewport.sy};
+}
+function syncSizingUI(){
+ const custom=$('customArt').checked;
+ for(const id of ['artWidth','artHeight'])$(id).disabled=!custom;
+ const viewport=svgPhysicalViewport(validateSvg(svgText).documentElement);
+ $('nativeArt').disabled=!viewport&&!$('nativeArt').checked;
+ $('nativeSizeHelp').textContent=viewport
+   ?`SVG canvas ${viewport.width.toFixed(2)} × ${viewport.height.toFixed(2)} mm. Artwork keeps its physical scale.`
+   :'Use SVG size requires fixed width and height in the file.';
+ if($('nativeArt').checked&&viewport){
+   try{
+     const {width,height}=nativeSizing(designShapes());
+     growBaseForExactArtwork(width,height);
+   }catch(error){$('sizeSummary').textContent=error.message}
+ }
+}
 function refreshAspectFromSVG(){try{const b=artworkBounds(normalizeShapes(svgText));currentAspect=b.dx/b.dy;return true}catch(e){return false}}
 function updateArtworkSummary(raw){
  const base=isModular()?'40 × 40 mm keyed insert':`base ${getNumber('width').toFixed(1)} × ${getNumber('height').toFixed(1)} mm`;
@@ -496,10 +595,9 @@ function setCustomFromFit(){
    $('sizeSummary').textContent=`Artwork ${r.artW.toFixed(2)} × ${r.artH.toFixed(2)} mm`;
  }catch(e){$('sizeSummary').textContent=e.message}
 }
-for(const id of ['fitArt','customArt'])$(id).addEventListener('change',()=>{if($('customArt').checked){setCustomFromFit();}syncSizingUI();markDirty();});
-function growBaseForExactArtwork(){
+for(const id of ['fitArt','customArt','nativeArt'])$(id).addEventListener('change',()=>{if($('customArt').checked){setCustomFromFit();}syncSizingUI();markDirty();});
+function growBaseForExactArtwork(artW=$('artWidth').valueAsNumber,artH=$('artHeight').valueAsNumber){
  if(isModular())return;
- const artW=$('artWidth').valueAsNumber,artH=$('artHeight').valueAsNumber;
  const w=$('width').valueAsNumber,h=$('height').valueAsNumber,margin=$('margin').valueAsNumber;
  if(![artW,artH,w,h,margin].every(Number.isFinite)||Math.min(artW,artH,margin)<.5||Math.min(w,h)<10)return;
  let innerW=Math.max(w-2*margin,artW),innerH=Math.max(h-2*margin,artH);
@@ -1119,7 +1217,8 @@ function prepareDesign(compareOffset=false,preview=false){
  if(accuracy<.005||accuracy>.3)throw Error('Curve accuracy must be between 0.005 and 0.3 mm.');
  if(corner<0)throw Error('Corner radius cannot be negative.');
  const shapes=designShapes();
- const sizing=$('customArt').checked?{mode:'custom',width:getNumber('artWidth'),height:getNumber('artHeight')}:{mode:'fit'};
+ const sizing=$('nativeArt').checked?nativeSizing(shapes):
+   $('customArt').checked?{mode:'custom',width:getNumber('artWidth'),height:getNumber('artHeight')}:{mode:'fit'};
  const raw=getArtwork(shapes,w,h,margin,$('mirror').checked,sizing,kind);
  const requestedSimplify=getNumber('simplify');if(requestedSimplify<0||requestedSimplify>.5)throw Error('SVG simplification must be between 0 and 0.5 mm.');
  const effectiveTolerance=Math.max(accuracy,requestedSimplify),optimized=optimizeShapes(raw.transformed,curve,effectiveTolerance);
@@ -1493,14 +1592,15 @@ function download(data,name,type){const url=URL.createObjectURL(new Blob([data],
 function currentSettings(){
  const settings={};
  for(const id of settingIds)settings[id]=$(id).type==='checkbox'?$(id).checked:$(id).value;
- settings.artSizing=$('customArt').checked?'custom':'fit';
+ settings.artSizing=$('nativeArt').checked?'native':$('customArt').checked?'custom':'fit';
  return settings;
 }
 function applySettings(saved){
  const settings={...defaultPlacement,...defaultBorder,designOffset:0,construction:'solid',...saved};
  if(saved.borderShape===undefined&&settings.borderPlacement==='base')settings.borderShape='match';
  $('customArt').checked=settings.artSizing==='custom';
- $('fitArt').checked=!$('customArt').checked;
+ $('nativeArt').checked=settings.artSizing==='native';
+ $('fitArt').checked=!$('customArt').checked&&!$('nativeArt').checked;
  for(const id of settingIds){
    if(settings[id]===undefined)continue;
    if($(id).type==='checkbox')$(id).checked=!!settings[id];
@@ -1618,4 +1718,5 @@ function stlFilename(){
  return `${artworkName}_${impression}_${edge}_${shape}.stl`;
 }
 $('export').onclick=()=>{if(!finalMesh||$('export').disabled)return;try{const exporter=new STLExporter();const output=exporter.parse(finalMesh,{binary:true});download(output,stlFilename(),'model/stl')}catch(e){showActionError('STL export failed: '+e.message)}};
+syncSizingUI();
 </script></body></html>
