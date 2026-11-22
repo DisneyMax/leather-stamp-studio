@@ -15,6 +15,10 @@
 .dropzone:hover,.dropzone.dragging{background:#26364a;border-color:#e3b474}.dropzone strong{display:block;margin-bottom:5px}.dropzone small{line-height:1.5}
 .dropzone input{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}
 #artworkName{margin:9px 0 0;font-size:12px;overflow-wrap:anywhere;color:#a9d9b8}
+#holderDownload{display:block;margin-top:8px;color:#e3bd84;font-size:13px}
+#holderDownload[hidden]{display:none}
+#assemblyControl[hidden]{display:none}
+#designHolder{fill:none;stroke:#e1bb8d;stroke-dasharray:5 4;vector-effect:non-scaling-stroke}
 #stageTools{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding:8px 14px;background:#141e29;border-bottom:1px solid #384654}
 #previewNav{display:flex;gap:3px;border:1px solid #556172;border-radius:9px;padding:3px}
 #stageTools button{font-size:12px;padding:8px 10px;min-height:36px;background:#273342;color:#ecf1f6}
@@ -119,9 +123,11 @@
 <script src="https://cdn.jsdelivr.net/npm/clipper-lib@6.4.2/clipper.js"></script>
 <!-- Update the asset version when the polygon library interface changes. -->
 <script src="./polygon-geometry.js?v=stamp-border-1"></script>
+<script src="./modular-geometry.js"></script>
 </head><body><header><div><h1>Leather Stamp Studio</h1><small>SVG → printable STL · designed for leather embossing dies</small></div><small>Browser-based · mm</small></header><main><aside>
 <div class="workflow" role="group" aria-label="Generate and export">
 <div class="buttons"><button id="build" title="Ctrl/⌘ + Enter">Generate 3D stamp</button><button class="secondary" id="export" disabled>Download STL</button></div>
+<a id="holderDownload" href="./prototypes/modular-insert/samples/holder-keyed-40-v1-0p25-side-0p35-overhead.stl" download hidden>Download keyed holder STL</a>
 <div class="buttons project-actions"><button class="secondary" id="save" type="button">Save project JSON</button><button class="secondary" id="load" type="button">Load project JSON</button><input type="file" id="projectFile" accept=".json,application/json" hidden></div>
 <small id="readyState" role="status">Loading 3D libraries…</small>
 <p id="printabilityNote" role="status" hidden></p>
@@ -140,6 +146,8 @@
 <button class="secondary quiet-button" id="demo">Use example paw print</button>
 </section>
 <section class="ui-section"><h2>02 / Stamp setup</h2>
+<div class="field"><label for="construction">Stamp construction</label><select id="construction" aria-describedby="modularHelp"><option value="solid">Solid stamp</option><option value="modular">Keyed modular insert</option></select>
+<p class="hint" id="modularHelp" hidden>Keyed-40-v1 · 40 × 40 mm insert with a fixed backing. Artwork centers on the assembled 44 × 44 mm holder. The holder has 0.25 mm clearance per side and 0.35 mm above the tongues.</p></div>
 <div class="field"><label for="mode">Impression</label><select id="mode" aria-describedby="impressionHelp"><option value="raised">Debossing (raised stamp)</option><option value="recessed">Embossing (recessed die)</option></select><p class="hint" id="impressionHelp"></p></div>
 <div class="check"><input id="mirror" aria-describedby="mirrorHelp" type="checkbox" checked><label for="mirror">Mirror artwork for stamping</label></div>
 <p class="hint" id="mirrorHelp">Reverses the stamp face so text reads correctly on leather. Turn it off if your SVG is already reversed.</p>
@@ -151,13 +159,14 @@
 <div id="exactSizeFields" class="exact-fields">
 <div class="pair"><div class="field"><label for="artWidth">Artwork width (mm)</label><input id="artWidth" type="number" min="0.5" max="200" step="0.5" value="32" disabled></div><div class="field"><label for="artHeight">Artwork height (mm)</label><input id="artHeight" type="number" min="0.5" max="200" step="0.5" value="32" disabled></div></div>
 <div class="check"><input id="lockAspect" type="checkbox" checked><label for="lockAspect">Keep original proportions</label></div>
-<p class="hint">Editing the exact artwork size can grow the backing plate to keep the artwork margin.</p>
+<p class="hint" id="exactSizeHelp">Editing the exact artwork size can grow the backing plate to keep the artwork margin.</p>
 </div>
 </fieldset>
-<h3 class="size-heading">Backing-plate dimensions</h3>
+<div id="solidBaseFields"><h3 class="size-heading">Backing-plate dimensions</h3>
 <div class="pair"><div class="field"><label for="width">Base width (mm)</label><input id="width" type="number" min="10" max="200" step="1" value="40"></div><div class="field"><label for="height">Base height (mm)</label><input id="height" type="number" min="10" max="200" step="1" value="40"></div></div>
 <div class="field"><label for="baseShape">Base shape</label><select id="baseShape" aria-describedby="baseShapeHelp"><option value="rect">Rectangle</option><option value="roundrect">Rounded rectangle</option><option value="circle">Circle / ellipse</option><option value="contour">SVG contour (convex silhouette)</option></select></div>
 <p class="hint" id="baseShapeHelp" hidden>SVG contour creates a convex backing plate around the artwork.</p>
+</div>
 <p id="sizeSummary" class="hint measure" aria-live="polite">Generate to see artwork dimensions.</p>
 </section>
 <section class="advanced-group" id="borderPanel" aria-label="Stamp border">
@@ -189,7 +198,7 @@
 <div class="advanced-body">
 <p class="hint">The defaults are our tested starting values. Adjust only if you need a different impression depth, clearance or edge detail.</p>
 <div class="pair">
-<div class="field"><label for="base">Base thickness (mm)</label><input id="base" type="number" min="2" max="25" step="0.5" value="6"></div>
+<div class="field" id="solidThickness"><label for="base">Base thickness (mm)</label><input id="base" type="number" min="2" max="25" step="0.5" value="6"></div>
 <div class="field"><label for="depth">Impression depth (mm)</label><input id="depth" type="number" min="0.2" max="5" step="0.1" value="1.5"></div>
 <div class="field"><label for="margin">Artwork margin (mm)</label><input id="margin" type="number" min="0.5" max="30" step="0.5" value="4"></div>
 <div class="field" id="bevelField"><label for="bevel">Edge size (mm)</label><input id="bevel" type="number" min="0" max="2" step="0.05" value="0.25"></div>
@@ -237,10 +246,12 @@
 <button id="viewDesign" type="button" aria-controls="designView" aria-pressed="false">2D Design</button>
 <button id="viewPreview" type="button" aria-controls="viewport" aria-pressed="true">3D Preview</button>
 </div>
+<label id="assemblyControl" hidden><input type="checkbox" id="showHolder" checked> Show holder</label>
 <button id="resetView" type="button" title="Recenter and fit your stamp in the 3D view" hidden>Fit view</button>
 </div>
 <div id="previewSurface"><div id="viewport"></div><div id="designView" hidden>
 <svg id="designCanvas" role="img" aria-label="Top view of the stamp artwork and base">
+<path id="designHolder" aria-hidden="true"></path>
 <path id="designPlate" fill-rule="evenodd"></path>
 <path id="designArt" fill-rule="evenodd"></path>
 <path id="borderPreview" fill-rule="evenodd" aria-hidden="true"></path>
@@ -313,6 +324,15 @@ import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {SVGLoader} from 'three/addons/loaders/SVGLoader.js';
 import {STLExporter} from 'three/addons/exporters/STLExporter.js';
 const $=id=>document.getElementById(id), status=$('status');
+const modular = window.ModularStampGeometry;
+const isModular = () => $('construction').value === 'modular';
+function sizingBase(){
+ return isModular() ? [...modular.artworkSize,'rect'] :
+   [getNumber('width'),getNumber('height'),$('baseShape').value];
+}
+function rectPath(x0,y0,x1,y1){
+ return [[x0,y0],[x1,y0],[x1,y1],[x0,y1]].map(([x,y])=>({X:Math.round(x*CS),Y:Math.round(y*CS)}));
+}
 function showPrintabilityNote(offset){
  const parts=[];
  if(offset?.fewerHoles)parts.push(`${offset.fewerHoles} fewer ${offset.fewerHoles===1?'hole':'holes'}`);
@@ -346,7 +366,7 @@ function showLoadError(error){showActionError('Could not load SVG: '+error.messa
 
 const sample="<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<svg id=\"Layer_1\" data-name=\"Layer 1\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 788.67 741.6\">\n  <path d=\"M385.61,303.29c90.16-6.95,119.56,74.62,167.01,130.25,32.08,37.62,75.89,66.2,99.76,110.36,59.06,109.23-23.17,224.62-145.7,192-46.75-12.45-74.77-32.92-127.41-29.39-36.32,2.44-70.22,23.51-105.23,31.29-115.91,25.75-193.26-83.78-141.26-187.56,21.76-43.42,60.6-69.09,92.23-103.64,48.92-53.45,77-136.86,160.6-143.3Z\"/>\n  <path d=\"M245.53.57c120.87-13.01,174.39,198.98,76.58,258.21-68.82,41.67-132.65-33.43-149.34-94.74-15.86-58.26-1.39-155.49,72.76-163.47Z\"/>\n  <path d=\"M520.94.57c90.1-9.2,114.51,95.52,94.88,164.92-17.28,61.08-83.19,135.55-151.05,92.37C375.97,201.36,417.52,11.13,520.94.57Z\"/>\n  <path d=\"M68.65,198.82c95.67-9.54,167.1,137.13,105.93,209.21-54.79,64.56-137.52.65-162.87-59.18-23.21-54.76-15.66-142.78,56.94-150.03Z\"/>\n  <path d=\"M702.57,198.83c77.08-7.02,98.02,72.26,80.09,133.51-17.63,60.22-93.81,135-156.89,87.41-76.63-57.82-15.65-212.5,76.8-220.92Z\"/>\n</svg>";
 const sampleFilename='paw_print.svg';
-let svgText=sample, artworkFilename=sampleFilename, finalMesh=null, scene, camera, renderer, controls, modelGroup;
+let svgText=sample, artworkFilename=sampleFilename, finalMesh=null, holderMesh=null, scene, camera, renderer, controls, modelGroup;
 try{
 scene=new THREE.Scene();scene.background=new THREE.Color('#151e28');
 camera=new THREE.PerspectiveCamera(40,1,.1,2000);camera.position.set(75,-85,95);camera.up.set(0,0,1);
@@ -458,14 +478,18 @@ function getArtwork(shapes,w,h,margin,mirror,sizing,kind){
 let currentAspect=1;
 function syncSizingUI(){const custom=$('customArt').checked;for(const id of ['artWidth','artHeight'])$(id).disabled=!custom;$('margin').disabled=false;}
 function refreshAspectFromSVG(){try{const b=artworkBounds(normalizeShapes(svgText));currentAspect=b.dx/b.dy;return true}catch(e){return false}}
-function updateArtworkSummary(raw){$('sizeSummary').textContent=`Artwork ${raw.artW.toFixed(2)} × ${raw.artH.toFixed(2)} mm · base ${getNumber('width').toFixed(1)} × ${getNumber('height').toFixed(1)} mm`;}
+function updateArtworkSummary(raw){
+ const base=isModular()?'40 × 40 mm keyed insert':`base ${getNumber('width').toFixed(1)} × ${getNumber('height').toFixed(1)} mm`;
+ $('sizeSummary').textContent=`Artwork ${raw.artW.toFixed(2)} × ${raw.artH.toFixed(2)} mm · ${base}`;
+}
 // Rounding up can push an aspect-locked dimension past the base margin.
 function formatFittedSize(value){
  return (Math.floor(value*1000+1e-9)/1000).toFixed(3);
 }
 function setCustomFromFit(){
  try{
-   const r=getArtwork(designShapes(),getNumber('width'),getNumber('height'),getNumber('margin'),false,{mode:'fit'},$('baseShape').value);
+   const [w,h,kind]=sizingBase();
+   const r=getArtwork(designShapes(),w,h,getNumber('margin'),false,{mode:'fit'},kind);
    currentAspect=r.ratio;
    $('artWidth').value=formatFittedSize(r.artW);
    $('artHeight').value=formatFittedSize(r.artH);
@@ -474,6 +498,7 @@ function setCustomFromFit(){
 }
 for(const id of ['fitArt','customArt'])$(id).addEventListener('change',()=>{if($('customArt').checked){setCustomFromFit();}syncSizingUI();markDirty();});
 function growBaseForExactArtwork(){
+ if(isModular())return;
  const artW=$('artWidth').valueAsNumber,artH=$('artHeight').valueAsNumber;
  const w=$('width').valueAsNumber,h=$('height').valueAsNumber,margin=$('margin').valueAsNumber;
  if(![artW,artH,w,h,margin].every(Number.isFinite)||Math.min(artW,artH,margin)<.5||Math.min(w,h)<10)return;
@@ -825,7 +850,7 @@ function meshFaultDetails(geom,limit=8){
  const fmt=v=>v.map(x=>x.toFixed(4)).join(',');
  return bad.slice(0,limit).map(e=>`${e.faces.length} face(s): (${fmt(coords[e.a])}) - (${fmt(coords[e.b])})`).concat(degens.slice(0,limit).map(i=>`degenerate face ${i}`)).join('\n');
 }
-function buildMesh({baseTree,inside,artwork,border,borderHeight,borderEdge},base,depth,raised,edge,bevel,borderBevel=0){
+function buildMesh({baseTree,inside,artwork,border,borderHeight,borderEdge,insertBacking},base,depth,raised,edge,bevel,borderBevel=0){
  const C=window.ClipperLib;
  // Partition the top of the base against the union of all relief.
  // Separate sharp border walls share this same base, with no bottom cap.
@@ -959,7 +984,15 @@ function buildMesh({baseTree,inside,artwork,border,borderHeight,borderEdge},base
  }
 
  // A flat base shares one continuous top surface with both relief regions.
- cap(baseTree,0,false);walls(baseTree,0,base,false);
+ if(insertBacking){
+   // Join the keyed backing to the relief at the common rectangular top seam.
+   for(const {vertices} of insertBacking){
+     if(vertices.every(([, , z])=>z===base))continue;
+     tri(...vertices.map(([x,y,z])=>vert(Math.round(x*CS),Math.round(y*CS),z)));
+   }
+ }else{
+   cap(baseTree,0,false);walls(baseTree,0,base,false);
+ }
  if(raised){
    cap(outside,base,true);
    const separateBorder=border&&(edge!=='sharp'||borderEdge!=='sharp'||borderHeight!==depth);
@@ -1075,8 +1108,11 @@ function prepareBorder(baseTree,inside){
 }
 
 function prepareDesign(compareOffset=false,preview=false){
- const w=getNumber('width'),h=getNumber('height'),margin=getNumber('margin'),curve=getNumber('curve');
- const corner=getNumber('corner'),accuracy=getNumber('tolerance'),kind=$('baseShape').value;
+ const [w,h,kind]=sizingBase();
+ const useInsert=isModular();
+ if(useInsert&&$('mode').value!=='raised')throw Error('Keyed modular inserts require Debossing (raised stamp).');
+ const margin=getNumber('margin'),curve=getNumber('curve');
+ const corner=useInsert?0:getNumber('corner'),accuracy=getNumber('tolerance');
  if(w<10||w>200||h<10||h>200)throw Error('Base width and height must be between 10 and 200 mm.');
  if(margin<.5||margin>=Math.min(w,h)/2)throw Error('Artwork margin is too large for the selected base.');
  if(curve<3||curve>128)throw Error('Curve detail must be between 3 and 128.');
@@ -1091,7 +1127,9 @@ function prepareDesign(compareOffset=false,preview=false){
  // elliptical base, check each actual artwork vertex against the inner ellipse.
  if(kind==='circle')for(const pt of raw.points){const rx=w/2-margin,ry=h/2-margin;if(rx<=0||ry<=0||(pt.x/rx)**2+(pt.y/ry)**2>1.00001)throw new ArtworkSizeError('Artwork extends beyond the safe area of the ellipse base. Reduce artwork size or margin, or choose a rectangular base.');}
  const outline=baseOutline(kind,w,h,corner,raw.points,margin);
- const baseP=baseLoops(outline,Math.min(curve,96));
+ const designArea=baseLoops(outline,Math.min(curve,96));
+ const [core]=useInsert?modular.insertBacking:[];
+ const baseP=useInsert?[rectPath(core[0],core[1],core[3],core[4])]:designArea;
  const originalArtP=optimized.shapes.flatMap(shape=>shapeLoops(shape,3));
  if(!$('designOffset').validity.valid)
    throw Error('Enter a design thickness adjustment from -0.50 to +0.50 mm.');
@@ -1103,6 +1141,8 @@ function prepareDesign(compareOffset=false,preview=false){
  const artP=placeArtworkPaths(offset.artworkPaths,x,y,rotation);
  const C=window.ClipperLib;
  // Block edits that would otherwise silently trim the design at the plate edge.
+ if(useInsert&&paths(region(C.ClipType.ctDifference,artP,designArea)).length)
+   throw Error('Artwork exceeds the centered insert area. Reduce artwork size or adjust its position.');
  if((placed||offsetMm>0)&&paths(region(C.ClipType.ctDifference,artP,baseP)).length){
    if(placed)throw Error('Artwork extends beyond the base. Adjust its position or rotation, or enlarge the base.');
    throw Error('Thickened artwork exceeds the base. Reduce the positive offset, enlarge the base, or adjust the margin.');
@@ -1123,9 +1163,9 @@ function prepareDesign(compareOffset=false,preview=false){
    };
  }
  let borderDesign,borderError;
- try{borderDesign=prepareBorder(baseTree,inside)}
+ try{borderDesign=prepareBorder(useInsert?region(C.ClipType.ctUnion,designArea):baseTree,inside)}
  catch(error){if(!preview)throw error;borderError=error.message}
- return {baseTree,inside,artwork,artP,w,h,kind,shapes,raw,optimized,effectiveTolerance,offsetMm,offset,changes,...borderDesign,borderError};
+ return {baseTree,inside,artwork,artP,w,h,kind,shapes,raw,optimized,effectiveTolerance,offsetMm,offset,changes,...borderDesign,borderError,insertBacking:useInsert?modular.mesh(modular.insertBacking):null};
 }
 
 function svgPath(loops){
@@ -1181,8 +1221,10 @@ function renderDesignPreview(){
    showPrintabilityNote(offset);
    updateArtworkSummary(raw);
    const plate=paths(baseTree);
+   const holderOutline=isModular()?[rectPath(-modular.holderCenterX,-modular.holderCenterX,modular.holderCenterX,modular.holderCenterX)]:[];
+   $('designHolder').setAttribute('d',svgPath(holderOutline));
    let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
-   for(const loop of plate)for(const {X,Y} of loop){
+   for(const loop of [...plate,...holderOutline])for(const {X,Y} of loop){
      minX=Math.min(minX,X/CS); maxX=Math.max(maxX,X/CS);
      minY=Math.min(minY,-Y/CS); maxY=Math.max(maxY,-Y/CS);
    }
@@ -1198,6 +1240,7 @@ function renderDesignPreview(){
    $('designStatus').textContent=borderError??`${type} in gold · Base in blue-gray${border?` · Border in green (${borderHeight} mm high)`:''} · Drag artwork to move`;
  }catch(error){
    $('borderPreview').removeAttribute('d');
+   $('designHolder').removeAttribute('d');
    drawThicknessChanges(undefined,false);
    drawFeatureCheck();
    showPrintabilityNote();
@@ -1267,6 +1310,8 @@ function syncPreviewControls(){
  $('orbitHelp').hidden=!hasModel;
  $('resetView').hidden=!in3D||!hasModel;
  $('viewShortcut').hidden=!in3D||!hasModel;
+ $('assemblyControl').hidden=!in3D||!holderMesh;
+ if(holderMesh)holderMesh.visible=$('showHolder').checked;
 }
 
 function showDesignView(showDesign){
@@ -1280,6 +1325,7 @@ function showDesignView(showDesign){
  syncPreviewControls();
  if(showDesign)scheduleDesignPreview();
 }
+$('showHolder').onchange=syncPreviewControls;
 $('viewDesign').onclick=()=>showDesignView(true);
 $('viewPreview').onclick=()=>showDesignView(false);
 $('viewShortcut').addEventListener('click',event=>{
@@ -1301,8 +1347,18 @@ function setMeshAttemptLog(log){
  attempts.hidden=!log;
 }
 
+function clearStampMeshes(){
+ for(const mesh of [finalMesh,holderMesh]){
+   if(!mesh)continue;
+   modelGroup.remove(mesh);
+   mesh.geometry.dispose();
+   mesh.material.dispose();
+ }
+ finalMesh=holderMesh=null;
+}
+
 function build(){try{
- const base=getNumber('base'),depth=getNumber('depth');
+ const base=isModular()?modular.rim-modular.floor:getNumber('base'),depth=getNumber('depth');
  if(base<2||base>25)throw Error('Base thickness must be between 2 and 25 mm.');
  if(depth<=0||depth>5)throw Error('Relief/cavity depth must be greater than 0 and at most 5 mm.');
  const raised=$('mode').value==='raised';
@@ -1363,15 +1419,25 @@ function build(){try{
    if(candidate)candidate.dispose();
  }
  if(!geometry){
-   if(finalMesh){modelGroup.remove(finalMesh);finalMesh.geometry.dispose();finalMesh.material.dispose();finalMesh=null}
+   clearStampMeshes();
    status.textContent='No valid mesh found. Export blocked.\nTry Sharp, smaller edge size, or simplifying very narrow features.';
    setMeshAttemptLog([...attemptLog,...faultDetails].join('\n'));
    status.className='bad';progress('Error — see details','error');return;
  }
  const issues=report.boundary+report.nonmanifold+report.degenerate+report.winding;
- if(finalMesh){modelGroup.remove(finalMesh);finalMesh.geometry.dispose();finalMesh.material.dispose()}
+ clearStampMeshes();
  finalMesh=new THREE.Mesh(geometry,new THREE.MeshStandardMaterial({color:0xc7a27c,metalness:.12,roughness:.67,side:THREE.DoubleSide}));modelGroup.add(finalMesh);
- const bounds=new THREE.Box3().setFromObject(finalMesh),center=bounds.getCenter(new THREE.Vector3()),span=bounds.getSize(new THREE.Vector3()),radius=Math.max(span.x,span.y,span.z,15);controls.target.copy(center);camera.position.copy(center).add(new THREE.Vector3(radius*1.5,-radius*1.7,radius*1.6));camera.near=.1;camera.far=Math.max(2000,radius*20);camera.updateProjectionMatrix();controls.update();
+ if(isModular()){
+   const {lateral,overhead}=modular.testedFit;
+   const coordinates=modular.mesh(modular.holder(lateral,modular.envelope,overhead))
+     .flatMap(({vertices})=>vertices.flatMap(([x,y,z])=>[x-modular.holderCenterX,y,z-modular.floor]));
+   const holderGeometry=new THREE.BufferGeometry();
+   holderGeometry.setAttribute('position',new THREE.Float32BufferAttribute(coordinates,3));
+   holderGeometry.computeVertexNormals();
+   holderMesh=new THREE.Mesh(holderGeometry,new THREE.MeshStandardMaterial({color:0x657d8d,roughness:.8}));
+   modelGroup.add(holderMesh);
+ }
+ const bounds=new THREE.Box3().setFromObject(modelGroup),center=bounds.getCenter(new THREE.Vector3()),span=bounds.getSize(new THREE.Vector3()),radius=Math.max(span.x,span.y,span.z,15);controls.target.copy(center);camera.position.copy(center).add(new THREE.Vector3(radius*1.5,-radius*1.7,radius*1.6));camera.near=.1;camera.far=Math.max(2000,radius*20);camera.updateProjectionMatrix();controls.update();
  status.textContent=`Artwork: ${raw.artW.toFixed(2)} × ${raw.artH.toFixed(2)} mm · Base: ${w.toFixed(2)} × ${h.toFixed(2)} mm\n${raised?'Debossing (raised stamp)':'Embossing (recessed die)'} · ${kind} base · ${shapes.length} SVG shapes / ${optimized.vertices.toLocaleString()} optimized vertices · ${effectiveTolerance.toFixed(3)} mm tolerance · ${report.triangles.toLocaleString()} triangles\nMesh check: ${report.boundary} boundary edges, ${report.nonmanifold} non-manifold edges, ${report.degenerate} degenerate triangles, ${report.winding} winding conflicts. ${issues?'EXPORT BLOCKED: invalid mesh.':'Basic manifold checks passed. Export enabled.'}\nRequested edge: ${bevel.toFixed(3)} mm · Applied edge: ${appliedBevel.toFixed(3)} mm${appliedBevel<bevel?" (automatically reduced for mesh integrity)":""}.\nDesign thickness adjustment: ${offsetMm>=0?'+':''}${offsetMm.toFixed(2)} mm.`;
  if(design.border){
    const label={sharp:'Sharp',chamfer:'Chamfered',round:'Rounded'}[design.borderEdge];
@@ -1388,8 +1454,15 @@ function build(){try{
 
 function syncSimpleUI(){
  const exact=$('customArt').checked;
+ const useInsert=isModular();
+ $('solidBaseFields').hidden=useInsert;
+ $('solidThickness').hidden=useInsert;
+ $('modularHelp').hidden=!useInsert;
+ $('holderDownload').hidden=!useInsert;
+ $('export').textContent=useInsert?'Download insert STL':'Download STL';
+ $('exactSizeHelp').textContent=useInsert?'The keyed insert has a fixed size. Reduce artwork dimensions if it exceeds the centered area.':'Editing the exact artwork size can grow the backing plate to keep the artwork margin.';
  $('exactSizeFields').classList.toggle('active',exact);
- $('cornerField').hidden=$('baseShape').value!=='roundrect';
+ $('cornerField').hidden=useInsert||$('baseShape').value!=='roundrect';
  const recessed=$('mode').value==='recessed';
  $('impressionHelp').textContent=recessed?'A recessed die makes a raised impression in leather.':'A raised stamp presses the design into the leather.';
  $('baseShapeHelp').hidden=$('baseShape').value!=='contour';
@@ -1399,9 +1472,9 @@ function syncSimpleUI(){
    :$('edge').value==='sharp'?'Sharp is the default. Choose Chamfered or Rounded to soften the raised edge.'
    :'Change the edge size in Advanced settings. The app may reduce it to produce a valid mesh.';
 }
-['fitArt','customArt','baseShape','edge','mode'].forEach(id=>$(id).addEventListener('change',syncSimpleUI));
+['fitArt','customArt','baseShape','edge','mode','construction'].forEach(id=>$(id).addEventListener('change',syncSimpleUI));
 $('resetDefaults').onclick=()=>{
- const defaults={...defaultPlacement,...defaultBorder,designOffset:0,mode:'raised',mirror:true,width:40,height:40,base:6,depth:1.5,margin:4,curve:64,tolerance:0.035,baseShape:'rect',corner:5,edge:'sharp',bevel:0.25,simplify:0.02,lockAspect:true};
+ const defaults={...defaultPlacement,...defaultBorder,designOffset:0,construction:'solid',mode:'raised',mirror:true,width:40,height:40,base:6,depth:1.5,margin:4,curve:64,tolerance:0.035,baseShape:'rect',corner:5,edge:'sharp',bevel:0.25,simplify:0.02,lockAspect:true};
  for(const [id,value] of Object.entries(defaults)){$(id).type==='checkbox'?$(id).checked=value:$(id).value=value;}
  $('fitArt').checked=true;$('customArt').checked=false;syncSizingUI();syncSimpleUI();syncBorderUI(defaults.borderShape);$('designOffsetSlider').value=$('designOffset').value;
  $('export').disabled=true;status.className='';status.textContent='Recommended settings restored. Click Generate 3D stamp.';
@@ -1415,7 +1488,7 @@ $('designOffset').addEventListener('input',()=>{
 $('designOffsetSlider').addEventListener('input',()=>{
  $('designOffset').value=Number($('designOffsetSlider').value).toFixed(2);
 });
-const settingIds=[...Object.keys(defaultPlacement),...Object.keys(defaultBorder),'designOffset','mode','mirror','width','height','base','depth','margin','curve','tolerance','baseShape','corner','edge','bevel','simplify','artWidth','artHeight','lockAspect'];
+const settingIds=['construction',...Object.keys(defaultPlacement),...Object.keys(defaultBorder),'designOffset','mode','mirror','width','height','base','depth','margin','curve','tolerance','baseShape','corner','edge','bevel','simplify','artWidth','artHeight','lockAspect'];
 function download(data,name,type){const url=URL.createObjectURL(new Blob([data],{type}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),2500)}
 function currentSettings(){
  const settings={};
@@ -1424,7 +1497,7 @@ function currentSettings(){
  return settings;
 }
 function applySettings(saved){
- const settings={...defaultPlacement,...defaultBorder,designOffset:0,...saved};
+ const settings={...defaultPlacement,...defaultBorder,designOffset:0,construction:'solid',...saved};
  if(saved.borderShape===undefined&&settings.borderPlacement==='base')settings.borderShape='match';
  $('customArt').checked=settings.artSizing==='custom';
  $('fitArt').checked=!$('customArt').checked;
@@ -1530,7 +1603,7 @@ $('build').onclick=()=>{
  setTimeout(build,35);
 };
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter'&&!e.repeat){e.preventDefault();if(!$('build').disabled)$('build').click()}});
-$('resetView').onclick=()=>{if(!finalMesh){controls.target.set(0,0,5);camera.position.set(75,-85,95);controls.update();return}const bounds=new THREE.Box3().setFromObject(finalMesh),center=bounds.getCenter(new THREE.Vector3()),span=bounds.getSize(new THREE.Vector3()),radius=Math.max(span.x,span.y,span.z,15);controls.target.copy(center);camera.position.copy(center).add(new THREE.Vector3(radius*1.5,-radius*1.7,radius*1.6));controls.update()};
+$('resetView').onclick=()=>{if(!finalMesh){controls.target.set(0,0,5);camera.position.set(75,-85,95);controls.update();return}const bounds=new THREE.Box3().setFromObject(modelGroup),center=bounds.getCenter(new THREE.Vector3()),span=bounds.getSize(new THREE.Vector3()),radius=Math.max(span.x,span.y,span.z,15);controls.target.copy(center);camera.position.copy(center).add(new THREE.Vector3(radius*1.5,-radius*1.7,radius*1.6));controls.update()};
 function stlFilename(){
  const source=artworkFilename.split(/[\\/]/).pop().replace(/\.svg$/i,'');
  const stem=source.replace(/[<>:"|?*\s\x00-\x1f\x7f]+/g,'_').replace(/^[._]+|[._]+$/g,'');
@@ -1541,6 +1614,7 @@ function stlFilename(){
  const bases={rect:'rectangle',roundrect:'rounded_rectangle',circle:'ellipse',contour:'svg_contour'};
  const shape=bases[$('baseShape').value];
  const artworkName=[...stem].slice(0,50).join('')||'project_artwork';
+ if(isModular())return `${artworkName}_insert_${modular.interfaceId}.stl`;
  return `${artworkName}_${impression}_${edge}_${shape}.stl`;
 }
 $('export').onclick=()=>{if(!finalMesh||$('export').disabled)return;try{const exporter=new STLExporter();const output=exporter.parse(finalMesh,{binary:true});download(output,stlFilename(),'model/stl')}catch(e){showActionError('STL export failed: '+e.message)}};

@@ -80,6 +80,8 @@ Suggested record per trial: app commit, project/SVG, printer/nozzle, filament, o
 
 ## Longer-term backlog (not scheduled)
 
+- **Custom keyed holder and insert sizes:** Keep the current nominal 40 × 40 mm keyed insert for now. If larger or wider artwork regularly exceeds the usable area, prototype one additional matched holder and insert size before offering arbitrary dimensions. Show the maximum centered artwork size after margin, identify compatible holders and inserts by size, and verify fit and press performance for each new size.
+
 - **Lightweight vector editor:** selection and transform of individual SVG elements, duplication/deletion, history, and edited SVG export. **Full node/Bézier editing is explicitly deferred**; external vector editors remain appropriate for advanced artwork.
 - **Batch stamp layouts:** multiple stamps on a print plate and/or grouped exports; consider only when repetitive production warrants the complexity.
 - **Templates and extra exports:** evaluate from actual maker requests, with privacy, accessibility, and low operating costs in mind.

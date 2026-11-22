@@ -9,6 +9,8 @@ const compound = artwork('<path fill-rule="evenodd" d="M0 0H32V32H0Z M4 4H28V28H
 test.beforeEach(async ({ page }) => {
   // Exercise the production HTML and its pinned libraries without live CDN requests.
   await page.route('http://studio.test/', route => route.fulfill({ path: path.join(root, 'index.html') }));
+  await page.route('http://studio.test/modular-geometry.js', route =>
+    route.fulfill({ path: path.join(root, 'modular-geometry.js'), contentType: 'text/javascript' }));
   await page.route('http://studio.test/build-version.json', route => route.fulfill({ status: 404 }));
   await page.route('http://studio.test/polygon-geometry.js?v=stamp-border-1', route =>
     route.fulfill({ path: path.join(root, 'polygon-geometry.js'), contentType: 'text/javascript' }));
@@ -30,6 +32,8 @@ test.beforeEach(async ({ page }) => {
 
 test('shows the deployed build in the footer and keeps the header version-free', async ({ page }) => {
   const commit = '1234567890abcdef1234567890abcdef12345678';
+  await page.route('http://studio.test/modular-geometry.js', route =>
+    route.fulfill({ path: path.join(root, 'modular-geometry.js'), contentType: 'text/javascript' }));
   await page.route('http://studio.test/build-version.json', route => route.fulfill({ json: { commit } }));
   await page.reload();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Leather Stamp Studio');
@@ -1079,4 +1083,77 @@ test('border edge recovery keeps artwork bevel, saves the profile, and rejects a
   await expect(page.locator('#borderEdge')).toHaveValue('sharp');
   await expect(page.getByRole('spinbutton', { name: 'Border edge size (mm)' })).toBeHidden();
   await generate(page);
+});
+
+test('keyed insert centers SVG relief on the seated holder, with separate holder download', async ({ page }) => {
+  await load(page, compound, { construction: 'modular', edge: 'sharp' });
+  await page.getByRole('button', { name: '2D Design' }).click();
+  await expect(page.locator('#designHolder')).toHaveAttribute('d', /^M/);
+  const previewCenter = await page.locator('#designArt').evaluate(element => {
+    const { x, y, width, height } = element.getBBox();
+    return [x + width / 2, y + height / 2];
+  });
+  expect(previewCenter).toEqual([0, 0]);
+  const holderLink = page.getByRole('link', { name: 'Download keyed holder STL' });
+  await expect(holderLink).toHaveAttribute('href', /0p25-side-0p35-overhead\.stl$/);
+  await generate(page);
+  await expect(page.getByRole('checkbox', { name: 'Show holder' })).toBeVisible();
+  const triangles = parseSTL(await download(page, '#export'));
+  expectClosedMesh(triangles);
+  const points = triangles.flat();
+  const top = points.filter(([, , z]) => z === 4);
+  expect(top.length).toBeGreaterThan(0);
+  const bounds = (vertices, axis) => [
+    Math.min(...vertices.map(p => p[axis])),
+    Math.max(...vertices.map(p => p[axis])),
+  ];
+  expect(bounds(points, 0)).toEqual([-22, 18]);
+  const [leftWing, rightWing] = bounds(points, 1);
+  expect(leftWing).toBeCloseTo(-19.95, 5);
+  expect(rightWing).toBeCloseTo(19.95, 5);
+  expect(bounds(top, 0)).toEqual([-13.5, 13.5]);
+  const [minY, maxY] = bounds(top, 1);
+  expect(minY + maxY).toBeCloseTo(0, 5);
+  expect(surfaceHeight(triangles, 12, 0)).toBe(4);
+  expect(surfaceHeight(triangles, 10, 0)).toBe(2.5);
+
+  const project = JSON.parse(await download(page, '#save'));
+  expect(project.settings.construction).toBe('modular');
+  await page.locator('#construction').selectOption('solid');
+  await expect(page.locator('#export')).toBeDisabled();
+  await load(page, project.svg, project.settings);
+  await expect(page.locator('#construction')).toHaveValue('modular');
+  await load(page, project.svg, {});
+  await expect(page.locator('#construction')).toHaveValue('solid');
+});
+
+test('modular generation blocks unsupported polarity and artwork outside the fixed area', async ({ page }) => {
+  await load(page, compound, { construction: 'modular', mode: 'recessed' });
+  await page.locator('#build').click();
+  await expect(page.locator('#status')).toContainText('Keyed modular inserts require Debossing');
+  await expect(page.locator('#export')).toBeDisabled();
+  await load(page, compound, { construction: 'modular', mode: 'raised', artSizing: 'custom', artWidth: 65, artHeight: 65 });
+  await page.locator('#build').click();
+  await expect(page.locator('#status')).toContainText('exceeds');
+  await expect(page.locator('#export')).toBeDisabled();
+});
+
+
+test('modular offset, chamfer, border and explicit placement preserve a closed insert', async ({ page }) => {
+  await load(page, artwork('<path d="M0 0H12V6H0Z"/>'), {
+    construction: 'modular', artSizing: 'custom', artWidth: 18, artHeight: 9,
+    artX: 2, artY: -1, designOffset: 0.25, edge: 'chamfer', bevel: 0.25,
+    borderEnabled: true, borderShape: 'rect', borderGap: 2, borderThickness: 1,
+  });
+  await generate(page);
+  await expect(page.locator('#status')).toContainText('Applied edge: 0.250 mm');
+  await expect(page.locator('#status')).toContainText('Sharp border');
+  const triangles = parseSTL(await download(page, '#export'));
+  expectClosedMesh(triangles);
+  expect(surfaceHeight(triangles, 2, -1)).toBe(4);
+  const top = triangles.flat().filter(([, , z]) => z === 4);
+  for (const [axis, center] of [[0, 2], [1, -1]]) {
+    const coords = top.map(point => point[axis]);
+    expect((Math.min(...coords) + Math.max(...coords)) / 2).toBeCloseTo(center, 4);
+  }
 });

@@ -33,6 +33,37 @@ The initial coupon trial fit at all three clearances, while the follow-up fit wa
 
 The full-size holder with **0.25 mm clearance per side and 0.35 mm overhead** had a near-perfect hand fit in the latest trial. After a couple of insertion cycles, the insert slid freely in and out. The user also confirmed that the follow-up leather-offcut press check went well. This is the preferred clearance for the tested setup. Longer-term wear and fit across other printers and materials remain unverified.
 
+## Bambu Lab A1 print recommendations
+
+These Bambu Studio settings are a tested starting point for the keyed insert with a 2.5 mm backing. The successful print used the settings below.
+
+| Setting | Value |
+| --- | --- |
+| Layer height | 0.12 mm |
+| First layer height | 0.20 mm |
+| Bottom shell layers | 20 |
+| Top shell layers | 5 |
+| Wall loops | 5 |
+| Infill | 100%, zig-zag |
+| Ironing speed | 30 mm/s |
+| Ironing flow | 30% |
+
+Increasing bottom shell layers from 5 to 20 replaced the fragmented fill on layer 16, and the insert printed cleanly. At these layer heights, 20 bottom layers cover about 2.48 mm of the backing. If you change the layer height or backing thickness, adjust the count and check the backing in **Preview → Line Type** before printing.
+
+### Earlier print-test settings
+
+| Setting | Reported value |
+| --- | --- |
+| Layer height | 0.12 mm |
+| Infill | 80% gyroid |
+| Wall count | 5 |
+| Ironing speed | 30 mm/s |
+| Ironing flow | 30% |
+
+## Observed print times
+
+Printing the insert and reusable base together took about **60 minutes** in the reported test. Printing just the insert took about **20 minutes**. Once the base is printed, reusing it saves about **40 minutes per additional insert**, a **67% reduction** compared with printing both parts again.
+
 ## Reproduce and verify
 
 ```sh
@@ -40,4 +71,12 @@ node prototypes/modular-insert/generate.mjs prototypes/modular-insert/samples
 node --test prototypes/modular-insert/generate.test.mjs
 ```
 
-Tests read the emitted binary mesh data and check closed edges, consistent winding, a connected shell, outward normals, and bounds. Assembly tests check insertion clearance through the full slide, keyed orientation, stop contact, floor support, and nominal rim clearance. The sample models use fixed geometry. SVG-driven inserts, assembled preview, and production application controls are for a later phase.
+Tests read the emitted binary mesh data and check closed edges, consistent winding, a connected shell, outward normals, and bounds. Assembly tests check insertion clearance through the full slide, keyed orientation, stop contact, floor support, and nominal rim clearance. The sample inserts use fixed geometry.
+
+## SVG-driven inserts
+
+Choose **Keyed modular insert** under **Stamp construction**. This mode uses the fixed keyed-40-v1 backing and the tested 0.25 mm per side / 0.35 mm overhead holder. Choose **Debossing (raised stamp)**. Generate the insert from the current SVG, then download it separately from the reusable holder. **Show holder** toggles the assembled 3D preview. The holder STL uses its original bed-facing orientation.
+
+App-generated inserts trim 0.05 mm off each outer wing face, giving 0.30 mm nominal lateral clearance per side in the tested holder. The total wing span is 39.90 mm.
+
+The seated insert extends from X=−22 to +18 mm relative to the center of the 44 mm holder. The artwork origin sits at the holder center, 2 mm toward the rear stop from the insert envelope center. The unequal keys affect the backing profile and do not shift the artwork origin in Y. Position controls are offsets from the holder center. The 35 × 35.8 mm centered face area (before artwork margin) leaves clearance at the backing edge. A **Follow base** border follows this centered area. Exact size never expands the fixed backing. A design outside the face area blocks insert export.
