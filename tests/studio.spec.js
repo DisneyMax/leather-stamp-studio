@@ -1185,3 +1185,55 @@ test('imports a stroke-only outline around filled artwork without filling the ou
   expect(surfaceHeight(triangles, 8, 0)).toBe(6);
   expect(surfaceHeight(triangles, 0, 0)).toBe(7.5);
 });
+
+test('a selected SVG stroke becomes an independently adjustable border', async ({ page }) => {
+  const svg = artwork('<rect id="outer" x="2" y="2" width="28" height="28" fill="none" stroke="red"/><circle id="inner" cx="16" cy="16" r="7" fill="none" stroke="blue"/><rect x="14" y="14" width="4" height="4"/>');
+  await load(page, svg);
+  await page.locator('#borderEnabled').check();
+  await page.locator('#borderPlacement').selectOption('svg');
+  await page.locator('#borderOutline').selectOption({ label: 'outer' });
+  await expect(page.locator('#borderPreview')).toHaveAttribute('d', /^M/);
+  const border = page.locator('#borderPreview');
+  const original = await border.getAttribute('d');
+  await expect(page.locator('#borderGap')).toBeHidden();
+  await page.locator('#borderThickness').fill('1.2');
+  await expect(border).not.toHaveAttribute('d', original);
+  await page.locator('#borderHeightMode').selectOption('custom');
+  await page.locator('#borderHeight').fill('2.4');
+  await page.locator('#borderEdge').selectOption('chamfer');
+  await generate(page);
+  await expect(page.locator('#status')).toContainText('Chamfered border');
+  const triangles = parseSTL(await download(page, '#export'));
+  expectClosedMesh(triangles);
+  expect(Math.max(...triangles.flat().map(point => point[2]))).toBeCloseTo(8.4, 5);
+  expect(surfaceHeight(triangles, 0, 0)).toBe(7.5);
+  const project = JSON.parse(await download(page, '#save'));
+  expect(project.settings.borderOutline).toBe('0');
+  await load(page, project.svg, project.settings);
+  await expect(page.locator('#borderOutline')).toHaveValue('0');
+});
+
+test('a sole SVG outline replaces an obsolete saved selection', async ({ page }) => {
+  const svg = artwork('<rect id="heart" x="2" y="2" width="28" height="28" fill="none" stroke="red"/><rect x="12" y="12" width="8" height="8"/>');
+  const settings = { borderEnabled: true, borderPlacement: 'svg', borderOutline: '17' };
+  await load(page, svg, settings);
+  await expect(page.locator('#borderOutline')).toHaveValue('0');
+  await generate(page);
+
+  await load(page, compound, settings);
+  await expect(page.locator('#borderOutline')).toBeDisabled();
+  await page.locator('#build').click();
+  await expect(page.locator('#status')).toContainText('This SVG has no eligible border outline.');
+  await expect(page.locator('#export')).toBeDisabled();
+});
+
+test('a stroke converted to a filled ring remains selectable as an SVG border', async ({ page }) => {
+  const svg = artwork('<path id="expanded-heart" fill="purple" fill-rule="evenodd" d="M2 2H30V30H2Z M4 4H28V28H4Z"/><rect x="12" y="12" width="8" height="8"/>');
+  await load(page, svg, { borderEnabled: true, borderPlacement: 'svg', borderThickness: 3,
+    borderHeightMode: 'custom', borderHeight: 3.5 });
+  await expect(page.locator('#borderOutline')).toHaveValue('0');
+  await generate(page);
+  const triangles = parseSTL(await download(page, '#export'));
+  expectClosedMesh(triangles);
+  expect(Math.max(...triangles.flat().map(point=>point[2]))).toBe(9.5);
+});
