@@ -1266,9 +1266,12 @@ test('laser SVGs share the stamped registration geometry and block stale downloa
     laserEnabled: true, mirror: false, artX: 2 });
   await page.locator('#laserSettings > summary').click();
   await page.getByRole('button', { name: '2D Design' }).click();
-  const stampPaths = await Promise.all(['laserCutPreview', 'laserMarkPreview'].map(id =>
-    page.locator('#' + id).getAttribute('d')));
-  expect(stampPaths.every(path => path?.startsWith('M'))).toBe(true);
+  const stampPaths = [];
+  for (const id of ['laserCutPreview', 'laserMarkPreview']) {
+    const preview = page.locator('#' + id);
+    await expect(preview).toHaveAttribute('d', /^M/);
+    stampPaths.push(await preview.getAttribute('d'));
+  }
   const [cutWidth, cutHeight] = await page.locator('#laserCutPreview').evaluate(el => {
     const { width, height } = el.getBBox();
     return [width, height];
