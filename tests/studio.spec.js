@@ -1127,10 +1127,10 @@ test('keyed insert centers SVG relief on the seated holder, with separate holder
   await expect(page.locator('#construction')).toHaveValue('solid');
 });
 
-test('modular generation blocks unsupported polarity and artwork outside the fixed area', async ({ page }) => {
-  await load(page, compound, { construction: 'modular', mode: 'recessed' });
+test('modular generation blocks overly deep cavities and artwork outside the fixed area', async ({ page }) => {
+  await load(page, compound, { construction: 'modular', mode: 'recessed', depth: 2.6 });
   await page.locator('#build').click();
-  await expect(page.locator('#status')).toContainText('Keyed modular inserts require Debossing');
+  await expect(page.locator('#status')).toContainText('Keyed embossing cavity depth must be 0.2–2.5 mm');
   await expect(page.locator('#export')).toBeDisabled();
   await load(page, compound, { construction: 'modular', mode: 'raised', artSizing: 'custom', artWidth: 65, artHeight: 65 });
   await page.locator('#build').click();
@@ -1156,6 +1156,28 @@ test('modular offset, chamfer, border and explicit placement preserve a closed i
     const coords = top.map(point => point[axis]);
     expect((Math.min(...coords) + Math.max(...coords)) / 2).toBeCloseTo(center, 4);
   }
+});
+
+
+test('keyed embossing exports a centered compound cavity above the existing holder rim', async ({ page }) => {
+  await load(page, compound, { construction: 'modular', mode: 'recessed', depth: 2.5 });
+  await expect(page.locator('#depth')).toHaveAttribute('max', '2.5');
+  await generate(page);
+  const [file] = await Promise.all([page.waitForEvent('download'), page.locator('#export').click()]);
+  expect(file.suggestedFilename()).toMatch(/_embossing_insert_keyed-40-v1\.stl$/);
+  const triangles = parseSTL(await readFile(await file.path()));
+  expectClosedMesh(triangles);
+  expect(surfaceHeight(triangles, 12, 0)).toBe(1.5);
+  expect(surfaceHeight(triangles, -12, 0)).toBe(1.5);
+  expect(surfaceHeight(triangles, 10, 0)).toBe(4);
+  const points = triangles.flat();
+  const wings = points.filter(([, y]) => Math.abs(y) > 19.5);
+  expect(Math.min(...wings.map(([, , z]) => z))).toBe(0.25);
+  expect(Math.max(...wings.map(([, , z]) => z))).toBe(1);
+  expect(Math.max(...points.map(([, y]) => y))).toBeCloseTo(19.95, 5);
+  await page.locator('#mode').selectOption('raised');
+  await expect(page.locator('#export')).toBeDisabled();
+  await expect(page.locator('#depth')).toHaveAttribute('max', '5');
 });
 
 test('use SVG size preserves physical scale, expands the base and restores the saved mode', async ({ page }) => {

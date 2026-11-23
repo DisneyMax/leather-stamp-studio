@@ -82,6 +82,12 @@ const holderCenterX = (envelope + rearStop) / 2;
 // Extra lateral clearance on the outer wing faces of app-generated inserts.
 const insertBacking = insert(envelope, [], 0.05).map(([x0, y0, z0, x1, y1, z1]) =>
   [x0 - holderCenterX, y0, z0, x1 - holderCenterX, y1, z1]);
+// Raise the working face above the holder rim while preserving the tested keys.
+const embossingFaceHeight = rim - floor + 1.5;
+const minimumCavityFloor = 1.5;
+const maxEmbossingDepth = embossingFaceHeight - minimumCavityFloor;
+const [insertCore, ...insertWings] = insertBacking;
+const embossingBacking = [[...insertCore.slice(0, 5), embossingFaceHeight], ...insertWings];
 const testedFit = { lateral: 0.25, overhead: 0.35 };
 // Keep relief and borders off the backing seam even at zero border gap.
 const faceClearance = 0.5;
@@ -89,7 +95,7 @@ const artworkSize = [
   2 * (envelope - holderCenterX - faceClearance),
   2 * (Math.min(-coreLeft, coreRight) - faceClearance),
 ];
-const geometry = { interfaceId, envelope, floor, rim, holderCenterX, insertBacking, artworkSize, testedFit, holder, insert, mesh };
+const geometry = { interfaceId, envelope, floor, rim, holderCenterX, insertBacking, embossingBacking, embossingFaceHeight, maxEmbossingDepth, artworkSize, testedFit, holder, insert, mesh };
 if (typeof module === 'object') module.exports = geometry;
 else root.ModularStampGeometry = geometry;
 })(globalThis);
