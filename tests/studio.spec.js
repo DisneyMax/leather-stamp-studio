@@ -1259,3 +1259,53 @@ test('a stroke converted to a filled ring remains selectable as an SVG border', 
   expectClosedMesh(triangles);
   expect(Math.max(...triangles.flat().map(point=>point[2]))).toBe(9.5);
 });
+
+test('laser SVGs share the stamped registration geometry and block stale downloads', async ({ page }) => {
+  const svg = artwork('<path d="M0 0H12V4H5V10H0Z"/>');
+  await load(page, svg, { artSizing: 'custom', artWidth: 20, artHeight: 16, width: 50,
+    laserEnabled: true, mirror: false, artX: 2 });
+  await page.locator('#laserSettings > summary').click();
+  await page.getByRole('button', { name: '2D Design' }).click();
+  const stampPaths = await Promise.all(['laserCutPreview', 'laserMarkPreview'].map(id =>
+    page.locator('#' + id).getAttribute('d')));
+  expect(stampPaths.every(path => path?.startsWith('M'))).toBe(true);
+  const [cutWidth, cutHeight] = await page.locator('#laserCutPreview').evaluate(el => {
+    const { width, height } = el.getBBox();
+    return [width, height];
+  });
+  expect(cutWidth).toBeCloseTo(26, 3);
+  expect(cutHeight).toBeCloseTo(22, 3);
+  await expect(page.locator('#laserCutDownload')).toBeDisabled();
+  await generate(page);
+  const cut = (await download(page, '#laserCutDownload')).toString();
+  const reference = (await download(page, '#laserReferenceDownload')).toString();
+  expect(cut.match(/<svg [^>]+>/)[0]).toBe(reference.match(/<svg [^>]+>/)[0]);
+  const leatherView = path => path.replace(/([ML])(-?[\d.]+)/g, (_, op, x) => op + (-Number(x)));
+  expect(cut).toContain('d="' + leatherView(stampPaths[0]) + '"');
+  expect(reference).toContain('d="' + leatherView(stampPaths[1]) + '"');
+  expect(cut).toContain('fill="none"');
+  expect((cut.match(/<path/g) || []).length).toBe(1);
+  const triangles = parseSTL(await download(page, '#export'));
+  expectClosedMesh(triangles);
+  expect(surfaceHeight(triangles, -14.5, 0)).toBe(7.5);
+  expect(surfaceHeight(triangles, 18.5, 0)).toBe(6); // Ring center.
+  expect(surfaceHeight(triangles, 19.6, 0)).toBe(7.5);
+  const project = JSON.parse(await download(page, '#save'));
+  expect(project.settings).toMatchObject({ laserEnabled: true, laserCutOffset: '3', laserMarkGap: '2' });
+  await page.locator('#laserCutOffset').fill('4');
+  await expect(page.locator('#laserCutDownload')).toBeDisabled();
+  await expect(page.locator('#laserReferenceDownload')).toBeDisabled();
+  await expect(page.locator('#export')).toBeDisabled();
+});
+
+test('laser registration explains required backing and rejects modular stamps', async ({ page }) => {
+  const svg = artwork('<rect x="0" y="0" width="20" height="20"/>');
+  await load(page, svg, { laserEnabled: true });
+  await page.locator('#build').click();
+  await expect(page.locator('#status')).toContainText('Registration marks need a rectangular backing');
+  await expect(page.locator('#export')).toBeDisabled();
+  await page.locator('#construction').selectOption('modular');
+  await page.locator('#build').click();
+  await expect(page.locator('#status')).toContainText('Laser cut registration requires a solid debossing stamp.');
+  await expect(page.locator('#export')).toBeDisabled();
+});
