@@ -1282,7 +1282,20 @@ test('laser SVGs share the stamped registration geometry and block stale downloa
   await generate(page);
   const cut = (await download(page, '#laserCutDownload')).toString();
   const reference = (await download(page, '#laserReferenceDownload')).toString();
+  const layout = (await download(page, '#laserLayoutDownload')).toString();
   expect(cut.match(/<svg [^>]+>/)[0]).toBe(reference.match(/<svg [^>]+>/)[0]);
+  expect(layout.match(/<svg [^>]+>/)[0]).toBe(cut.match(/<svg [^>]+>/)[0]);
+  const groups = await page.evaluate(svg => {
+    const doc = new DOMParser().parseFromString(svg, 'image/svg+xml');
+    return [...doc.querySelectorAll('g')].map(group => {
+      const path = group.querySelector('path');
+      return { id: group.id, path: path.getAttribute('d'), color: path.getAttribute('stroke') || path.getAttribute('fill') };
+    });
+  }, layout);
+  expect(groups).toEqual([
+    { id: 'cut', path: cut.match(/ d="([^"]+)"/)[1], color: '#ff0000' },
+    { id: 'alignment-reference', path: reference.match(/ d="([^"]+)"/)[1], color: '#0000ff' },
+  ]);
   const leatherView = path => path.replace(/([ML])(-?[\d.]+)/g, (_, op, x) => op + (-Number(x)));
   expect(cut).toContain('d="' + leatherView(stampPaths[0]) + '"');
   expect(reference).toContain('d="' + leatherView(stampPaths[1]) + '"');
@@ -1298,6 +1311,7 @@ test('laser SVGs share the stamped registration geometry and block stale downloa
   await page.locator('#laserCutOffset').fill('4');
   await expect(page.locator('#laserCutDownload')).toBeDisabled();
   await expect(page.locator('#laserReferenceDownload')).toBeDisabled();
+  await expect(page.locator('#laserLayoutDownload')).toBeDisabled();
   await expect(page.locator('#export')).toBeDisabled();
 });
 

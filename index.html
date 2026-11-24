@@ -212,10 +212,11 @@
 </div>
 <p class="hint">Cut offset starts at the outside of the artwork and any decorative border. Mark clearance starts at the cut line and ends at the nearest mark edge.</p>
 <div class="buttons">
+<button id="laserLayoutDownload" type="button" class="secondary" disabled>Download laser layout SVG</button>
 <button id="laserCutDownload" type="button" class="secondary" disabled>Download cut SVG</button>
 <button id="laserReferenceDownload" type="button" class="secondary" disabled>Download alignment SVG</button>
 </div>
-<p class="hint">Generate a valid stamp to enable the matching SVGs. Use the alignment SVG as a reference in your laser software and send only the cut SVG to the laser.</p>
+<p class="hint">Generate a valid stamp to enable the matching SVGs. In the combined layout, red is the cut and blue is the alignment reference. Disable output for the blue marks before cutting, or use the cut-only SVG.</p>
 </div></div></details>
 <details class="advanced-group" id="advancedSettings"><summary><span>Advanced settings</span><small>Depth, artwork adjustments, and mesh detail</small></summary>
 <div class="advanced-body">
@@ -1298,7 +1299,7 @@ function syncLaserUI(){
  const enabled=$('laserEnabled').checked;
  $('laserFields').hidden=!enabled;
  const available=enabled&&laserOutput&&!$('export').disabled;
- for(const id of ['laserCutDownload','laserReferenceDownload'])$(id).disabled=!available;
+ for(const id of ['laserLayoutDownload','laserCutDownload','laserReferenceDownload'])$(id).disabled=!available;
 }
 
 function prepareLaserRegistration(baseTree,artwork,border){
@@ -1355,16 +1356,20 @@ function laserBounds(loops){
  return bounds;
 }
 
-function laserSVG(laser,reference){
+function laserSVG(laser,kind){
  const marks=paths(laser.marks);
  const {left,right,bottom,top}=laserBounds([...laser.cut,...marks]);
  const padding=1;
  const width=right-left+2*padding,height=top-bottom+2*padding;
- const loops=reference?marks:laser.cut;
- // Turn the stamp face over for the leather-facing view, regardless of the artwork mirror checkbox.
- const design=svgPath(loops.map(loop=>loop.map(({X,Y})=>({X:-X,Y}))));
- const paint=reference?'fill="black" fill-rule="evenodd"':'fill="none" stroke="black" stroke-width="0.1"';
- return `<svg xmlns="http://www.w3.org/2000/svg" width="${width.toFixed(4)}mm" height="${height.toFixed(4)}mm" viewBox="${(-right-padding).toFixed(4)} ${(-top-padding).toFixed(4)} ${width.toFixed(4)} ${height.toFixed(4)}"><path ${paint} d="${design}"/></svg>
+ // Turn the stamp face over for the leather-facing view.
+ const leatherPath=loops=>svgPath(loops.map(loop=>loop.map(({X,Y})=>({X:-X,Y}))));
+ const combined=kind==='layout';
+ const cutPath=`<path fill="none" stroke="${combined?'#ff0000':'black'}" stroke-width="0.1" d="${leatherPath(laser.cut)}"/>`;
+ const referencePath=`<path fill="${combined?'#0000ff':'black'}" fill-rule="evenodd" d="${leatherPath(marks)}"/>`;
+ const content=combined
+   ?`<desc>Red: cut path. Blue: alignment reference only. Disable blue output before cutting.</desc><g id="cut"><title>Cut</title>${cutPath}</g><g id="alignment-reference"><title>Alignment reference</title>${referencePath}</g>`
+   :kind==='reference'?referencePath:cutPath;
+ return `<svg xmlns="http://www.w3.org/2000/svg" width="${width.toFixed(4)}mm" height="${height.toFixed(4)}mm" viewBox="${(-right-padding).toFixed(4)} ${(-top-padding).toFixed(4)} ${width.toFixed(4)} ${height.toFixed(4)}">${content}</svg>
 `;
 }
 
@@ -1907,12 +1912,14 @@ function stlFilename(){
  return `${artworkName}_${impression}_${edge}_${shape}.stl`;
 }
 $('export').onclick=()=>{if(!finalMesh||$('export').disabled)return;try{const exporter=new STLExporter();const output=exporter.parse(finalMesh,{binary:true});download(output,stlFilename(),'model/stl')}catch(e){showActionError('STL export failed: '+e.message)}};
-for(const [id,suffix,reference] of [
- ['laserCutDownload','laser_cut',false],['laserReferenceDownload','laser_alignment',true],
+for(const [id,suffix,kind] of [
+ ['laserLayoutDownload','laser_layout','layout'],
+ ['laserCutDownload','laser_cut','cut'],
+ ['laserReferenceDownload','laser_alignment','reference'],
 ]){
  $(id).onclick=()=>{
    if($(id).disabled||!laserOutput)return;
-   download(laserSVG(laserOutput,reference),stlFilename().replace(/\.stl$/, `_${suffix}.svg`),'image/svg+xml');
+   download(laserSVG(laserOutput,kind),stlFilename().replace(/\.stl$/, `_${suffix}.svg`),'image/svg+xml');
  };
 }
 syncSizingUI();
