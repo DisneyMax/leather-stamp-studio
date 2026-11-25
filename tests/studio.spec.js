@@ -1478,6 +1478,7 @@ test('an open SVG stroke explains border rejection while keeping the 2D artwork 
   await expect(page.locator('#borderOutlineNotice')).toContainText('Close open strokes in your SVG editor.');
   await expect(page.locator('#designStatus')).toContainText('Close open strokes');
   await page.locator('#build').click();
+  await expect(page.locator('#status')).toContainText('Close open strokes');
   await expect(page.locator('#export')).toBeDisabled();
 
   await load(page, artwork(outline + 'Z"/>' + lettering), settings);
@@ -1491,5 +1492,6 @@ test('an SVG with only live text explains how to make usable artwork and blocks 
   await expect(page.locator('#svgImportNotice')).toContainText('No visible vector shapes found.');
   await expect(page.locator('#designStatus')).toContainText('Convert text to paths');
   await page.locator('#build').click();
+  await expect(page.locator('#status')).toContainText('No visible vector shapes found.');
   await expect(page.locator('#export')).toBeDisabled();
 });
