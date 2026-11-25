@@ -1531,7 +1531,9 @@ for (const { mode, settings, size } of [
     await page.getByRole('button', { name: '2D Design' }).click();
     await expect(page.locator('#sizeSummary')).toContainText(size);
     const width = Number(await page.locator('#width').inputValue());
-    const art = await page.locator('#designArt').getAttribute('d');
+    const preview = page.locator('#designArt');
+    await expect(preview).toHaveAttribute('d', /^M/);
+    const art = await preview.getAttribute('d');
     const baseShape = await page.locator('#baseShape').inputValue();
     await page.locator('#laserSettings > summary').click();
     await page.getByRole('checkbox', { name: 'Add registration marks to the stamp' }).check();
@@ -1540,7 +1542,7 @@ for (const { mode, settings, size } of [
     await expect(page.getByRole('radio', { name: mode === 'Use SVG size' ? mode : 'Exact size' })).toBeChecked();
     await expect(page.locator('#baseShape')).toHaveValue(baseShape);
     await expect(page.locator('#sizeSummary')).toContainText(size);
-    await expect(page.locator('#designArt')).toHaveAttribute('d', art);
+    await expect(preview).toHaveAttribute('d', art);
     await expect(page.locator('#laserMarkPreview')).toHaveAttribute('d', /^M/);
     await generate(page);
     await expect(page.locator('#laserLayoutDownload')).toBeEnabled();
