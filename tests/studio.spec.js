@@ -1439,3 +1439,57 @@ for (const { label, attributes, content, size } of [
     }
   });
 }
+
+test('partial SVG import explains missing text and a dashed heart while retaining vector artwork', async ({ page }) => {
+  const lettering = '<path d="M12 12H20V15H15V20H12Z"/>';
+  const heart = '<g style="stroke-dasharray: 2 1"><path fill="none" stroke="red" d="M16 29C5 22 2 15 4 9C6 3 13 3 16 8C19 3 26 3 28 9C30 15 27 22 16 29Z"/></g>';
+  await load(page, artwork(lettering));
+  const preview = page.locator('#designArt');
+  await expect(preview).toHaveAttribute('d', /^M/);
+  const expectedArtwork = await preview.getAttribute('d');
+
+  await load(page, artwork(lettering + heart + '<text x="5" y="5">Studio</text>'));
+  const notice = page.locator('#svgImportNotice');
+  await expect(notice).toContainText('Text was skipped. Convert text to paths');
+  await expect(notice).toContainText('Dashed strokes were skipped. Convert them to filled outlines');
+  await expect(preview).toHaveAttribute('d', expectedArtwork);
+  await page.getByRole('checkbox', { name: 'Add border' }).check();
+  await page.locator('#borderPlacement').selectOption('svg');
+  await expect(page.locator('#borderOutlineNotice')).toContainText('Dashed strokes cannot be used as outlines.');
+
+  await page.locator('#borderPlacement').selectOption('artwork');
+  await expect(page.locator('#borderOutlineNotice')).toBeHidden();
+  await expect(page.locator('#borderPreview')).toHaveAttribute('d', /^M/);
+  await generate(page);
+  expectClosedMesh(parseSTL(await download(page, '#export')));
+
+  await page.getByRole('button', { name: 'Use example paw print' }).click();
+  await expect(notice).toBeHidden();
+});
+
+test('an open SVG stroke explains border rejection while keeping the 2D artwork visible', async ({ page }) => {
+  const outline = '<path id="heart" fill="none" stroke="red" d="M15 29C5 22 2 15 4 9C6 3 13 3 16 8C19 3 26 3 28 9C30 15 27 22 16 29';
+  const lettering = '<rect x="12" y="12" width="8" height="8"/>';
+  const settings = { borderEnabled: true, borderPlacement: 'svg' };
+  await load(page, artwork(outline + '"/>' + lettering), settings);
+  await page.getByRole('button', { name: '2D Design' }).click();
+  await expect(page.locator('#designArt')).toHaveAttribute('d', /^M/);
+  await expect(page.locator('#borderOutline')).toBeDisabled();
+  await expect(page.locator('#borderOutlineNotice')).toContainText('Close open strokes in your SVG editor.');
+  await expect(page.locator('#designStatus')).toContainText('Close open strokes');
+  await page.locator('#build').click();
+  await expect(page.locator('#export')).toBeDisabled();
+
+  await load(page, artwork(outline + 'Z"/>' + lettering), settings);
+  await expect(page.locator('#borderOutline')).toHaveValue('0');
+  await expect(page.locator('#borderOutlineNotice')).toBeHidden();
+  await generate(page);
+});
+
+test('an SVG with only live text explains how to make usable artwork and blocks export', async ({ page }) => {
+  await load(page, artwork('<text x="5" y="20">Studio</text>'));
+  await expect(page.locator('#svgImportNotice')).toContainText('No visible vector shapes found.');
+  await expect(page.locator('#designStatus')).toContainText('Convert text to paths');
+  await page.locator('#build').click();
+  await expect(page.locator('#export')).toBeDisabled();
+});

@@ -89,7 +89,7 @@
 #designStatus{margin:0 auto;text-align:center;background:#151c25;padding:5px 10px;border-radius:6px}
 #stage.show-design #viewport{visibility:hidden}
 @media(max-width:850px){#designView{inset:8px 10px 12px}}
-#printabilityNote{color:#e6bf8b;line-height:1.4;margin:7px 0 0;font-size:12px}
+#printabilityNote,#svgImportNotice,#borderOutlineNotice{color:#e6bf8b;line-height:1.4;margin:7px 0 0;font-size:12px}
 #designFooter{display:grid;justify-items:center;gap:4px}
 #changeControls{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:4px 12px;font-size:12px}
 #changeControls label{display:flex;align-items:center;gap:4px;margin:0}
@@ -155,6 +155,7 @@
 
 <section class="ui-section"><h2>01 / Your artwork</h2>
 <div class="field"><label for="file" class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Choose or drop SVG artwork"><strong>＋ Choose an SVG or drop it here</strong><small>Use vector fills and solid strokes</small><input id="file" type="file" accept=".svg,image/svg+xml"></label><div id="artworkName">Using included paw-print example</div></div>
+<p id="svgImportNotice" role="status" hidden></p>
 <button class="secondary quiet-button" id="demo">Use example paw print</button>
 </section>
 <section class="ui-section"><h2>02 / Stamp setup</h2>
@@ -191,7 +192,7 @@
 <div class="field"><label for="borderPlacement">Placement</label><select id="borderPlacement"><option value="artwork">Fit around artwork</option><option value="base">Follow base</option><option value="svg">Use SVG outline as border</option></select></div>
 <div class="field" id="borderShapeField"><label for="borderShape">Shape</label><select id="borderShape"></select></div>
 </div>
-<div id="borderOutlineField" class="field" hidden><label for="borderOutline">SVG outline</label><select id="borderOutline"></select></div>
+<div id="borderOutlineField" class="field" hidden><label for="borderOutline">SVG outline</label><select id="borderOutline" aria-describedby="borderOutlineNotice"></select><p id="borderOutlineNotice" role="status" hidden></p></div>
 <div class="pair">
 <div class="field"><label for="borderThickness">Border thickness (mm)</label><input type="number" id="borderThickness" min="0.30" max="5" step="any" value="1" required></div>
 <div class="field" id="borderGapField"><label for="borderGap" id="borderGapLabel">Gap from artwork (mm)</label><input type="number" id="borderGap" aria-describedby="borderHelp" min="0" max="20" step="any" value="2" required></div>
@@ -399,7 +400,16 @@ function showActionError(message,summary='Error — see details'){
  progress(summary,'error');
 }
 function fileLabel(name){$('artworkName').textContent=name?`Loaded: ${name}`:'Using included paw-print example';}
-function showLoadError(error){showActionError('Could not load SVG: '+error.message,'SVG load failed — see details');}
+function showSvgImportNotice(message){
+ const notice=$('svgImportNotice');
+ notice.textContent=message;
+ notice.hidden=!message;
+}
+function showLoadError(error){
+ const message='Could not load SVG: '+error.message;
+ showSvgImportNotice(message);
+ showActionError(message,'SVG load failed — see details');
+}
 
 const sample="<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<svg id=\"Layer_1\" data-name=\"Layer 1\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 788.67 741.6\">\n  <path d=\"M385.61,303.29c90.16-6.95,119.56,74.62,167.01,130.25,32.08,37.62,75.89,66.2,99.76,110.36,59.06,109.23-23.17,224.62-145.7,192-46.75-12.45-74.77-32.92-127.41-29.39-36.32,2.44-70.22,23.51-105.23,31.29-115.91,25.75-193.26-83.78-141.26-187.56,21.76-43.42,60.6-69.09,92.23-103.64,48.92-53.45,77-136.86,160.6-143.3Z\"/>\n  <path d=\"M245.53.57c120.87-13.01,174.39,198.98,76.58,258.21-68.82,41.67-132.65-33.43-149.34-94.74-15.86-58.26-1.39-155.49,72.76-163.47Z\"/>\n  <path d=\"M520.94.57c90.1-9.2,114.51,95.52,94.88,164.92-17.28,61.08-83.19,135.55-151.05,92.37C375.97,201.36,417.52,11.13,520.94.57Z\"/>\n  <path d=\"M68.65,198.82c95.67-9.54,167.1,137.13,105.93,209.21-54.79,64.56-137.52.65-162.87-59.18-23.21-54.76-15.66-142.78,56.94-150.03Z\"/>\n  <path d=\"M702.57,198.83c77.08-7.02,98.02,72.26,80.09,133.51-17.63,60.22-93.81,135-156.89,87.41-76.63-57.82-15.65-212.5,76.8-220.92Z\"/>\n</svg>";
 const sampleFilename='paw_print.svg';
@@ -498,13 +508,17 @@ function strokeOutlines(path,style,viewport,scale,C){
 // Preserve compound-path topology: holes, nested islands, and letter counters.
 // SVGLoader.createShapes can misclassify nested subpaths in Illustrator compound paths.
 function normalizeShapes(text){
- const viewport=svgPhysicalViewport(validateSvg(text).documentElement);
+ const document=validateSvg(text);
+ const viewport=svgPhysicalViewport(document.documentElement);
  if(!window.ClipperLib)throw Error('The polygon library could not load. Connect to the internet and reopen this HTML file.');
  const loader=new SVGLoader();
  loader.defaultDPI=96;
  const data=loader.parse(text),C=window.ClipperLib,scale=1000;
  const clip=viewport?rectPath(...viewport.bounds,scale):null;
- const shapes=[];
+ const shapes=[],skipped=new Set(),borderReasons=new Set();
+ if([...document.querySelectorAll('text')].some(node=>node.textContent.trim()&&
+   !node.closest('defs,symbol,clipPath,mask,pattern,marker,[display="none"],[visibility="hidden"]')))
+   skipped.add('Text was skipped. Convert text to paths in your SVG editor.');
  for(const [index,path] of data.paths.entries()){
   const style=path.userData?.style||{};
   if(style.display==='none'||style.visibility==='hidden'||style.opacity===0)continue;
@@ -518,9 +532,17 @@ function normalizeShapes(text){
    if(loop.length>=3)fillLoops.push(loop);
   }
   const fill=(style.fillRule||style['fill-rule']||'nonzero').toLowerCase()==='evenodd'?C.PolyFillType.pftEvenOdd:C.PolyFillType.pftNonZero;
-  const stroke=style.stroke&&style.stroke!=='none'&&style.strokeOpacity!==0&&style.strokeWidth>0;
-  const dash=path.userData?.node?.getAttribute('stroke-dasharray');
-  if(stroke&&dash&&dash!=='none')throw Error('Convert dashed SVG strokes to filled outlines before importing.');
+  const node=path.userData?.node;
+  const paintedStroke=style.stroke&&style.stroke!=='none'&&style.strokeOpacity!==0&&style.strokeWidth>0;
+  let dash;
+  if(paintedStroke)for(let element=node;element&&!dash;element=element.parentElement)
+    dash=(element.style?.strokeDasharray||element.getAttribute('stroke-dasharray'))?.trim();
+  const dashed=dash&&dash!=='none';
+  if(dashed){
+   skipped.add('Dashed strokes were skipped. Convert them to filled outlines in your SVG editor.');
+   borderReasons.add('Dashed strokes cannot be used as outlines.');
+  }
+  const stroke=paintedStroke&&!dashed;
   const firstShape=shapes.length;
   const painted=[];
   for(const [loops,rule] of [[fillLoops,fill],[stroke?strokeOutlines(path,style,viewport,scale,C):[],C.PolyFillType.pftNonZero]]){
@@ -566,13 +588,14 @@ function normalizeShapes(text){
    if(points.length>=3&&(sub.autoClose||points[0].distanceToSquared(points.at(-1))<1e-12)){
      const outline={id:String(index),points,label:path.userData.node?.id||`Stroke ${index+1} (${style.stroke})`};
      for(const shape of shapes.slice(firstShape))shape.outline=outline;
-   }
-  }else if(!stroke&&shapes.length===firstShape+1&&shapes[firstShape].holes.length===1){
+   }else borderReasons.add('Close open strokes in your SVG editor.');
+  }else if(stroke){
+   borderReasons.add(style.fill==='none'?'Use a single closed path for a stroked outline.':'Remove the fill from stroked outlines.');
+  }else if(!dashed&&shapes.length===firstShape+1&&shapes[firstShape].holes.length===1){
    shapes[firstShape].outline={id:String(index),label:path.userData.node?.id||`Filled ring ${index+1} (${style.fill})`};
   }
  }
- if(!shapes.length)throw Error('No visible vector shapes found. Convert text to outlines.');
- return shapes;
+ return {shapes,skipped:[...skipped],borderReasons:[...borderReasons]};
 }
 function artworkBounds(shapes){
  const pts=[];for(const shape of shapes){const a=shape.extractPoints(1);pts.push(...a.shape);for(const hole of a.holes)pts.push(...hole)}
@@ -623,7 +646,18 @@ function syncSizingUI(){
    }catch(error){$('sizeSummary').textContent=error.message}
  }
 }
-function refreshAspectFromSVG(){try{const b=artworkBounds(normalizeShapes(svgText));currentAspect=b.dx/b.dy;return true}catch(e){return false}}
+function refreshAspectFromSVG(){
+ try{
+   const {skipped}=designImport();
+   const b=artworkBounds(designShapes());
+   currentAspect=b.dx/b.dy;
+   showSvgImportNotice(skipped.join(' '));
+   return true;
+ }catch(error){
+   showSvgImportNotice(error.message);
+   return false;
+ }
+}
 function updateArtworkSummary(raw){
  const base=isModular()?'40 × 40 mm keyed insert':`base ${getNumber('width').toFixed(1)} × ${getNumber('height').toFixed(1)} mm`;
  $('sizeSummary').textContent=`Artwork ${raw.artW.toFixed(2)} × ${raw.artH.toFixed(2)} mm · ${base}`;
@@ -1154,13 +1188,18 @@ function buildMesh({baseTree,inside,artwork,border,borderHeight,borderEdge,inser
  }
  let g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(coords,3));g.setIndex(faces);g=g.toNonIndexed();g.computeVertexNormals();return g;
 }
-let cachedSVG, cachedShapes, designFrame, renderedSVG;
-function designShapes(){
+let cachedSVG, cachedImport, designFrame, renderedSVG;
+function designImport(){
  if(cachedSVG!==svgText){
-   cachedShapes=normalizeShapes(svgText);
+   cachedImport=normalizeShapes(svgText);
    cachedSVG=svgText;
  }
- return cachedShapes;
+ return cachedImport;
+}
+function designShapes(){
+ const {shapes,skipped}=designImport();
+ if(!shapes.length)throw Error(['No visible vector shapes found.',...skipped].join(' '));
+ return shapes;
 }
 
 const defaultPlacement={artX:0,artY:0,artRotation:0};
@@ -1196,14 +1235,25 @@ function syncBorderEdgeUI(){
  $('borderEdgeSizeField').hidden=$('borderEdge').value==='sharp';
 }
 $('borderEdge').addEventListener('change',syncBorderEdgeUI);
+function missingOutlineMessage(reasons=[]){
+ return ['This SVG has no eligible border outline.',...reasons,
+   'Use a single closed solid stroke with no fill or a filled ring, or choose a different border placement.'].join(' ');
+}
 function syncBorderOutlines(selected=$('borderOutline').value){
  const field=$('borderOutline');
  const choices=new Map();
- if($('borderPlacement').value==='svg'){
+ const usesOutline=$('borderPlacement').value==='svg';
+ let message='';
+ if(usesOutline){
    try{
-     for(const shape of designShapes())if(shape.outline)choices.set(shape.outline.id,shape.outline.label);
-   }catch{/* The design preview reports SVG import errors. */}
+     const {shapes,borderReasons}=designImport();
+     for(const shape of shapes)if(shape.outline)choices.set(shape.outline.id,shape.outline.label);
+     if(!choices.size)message=missingOutlineMessage(borderReasons);
+   }catch(error){message=error.message;}
  }
+ const notice=$('borderOutlineNotice');
+ notice.textContent=message;
+ notice.hidden=!message;
  field.replaceChildren(new Option(choices.size?'Choose an outline':'No closed strokes or filled rings found',''),
    ...[...choices].map(([id,label])=>new Option(label,id)));
  field.value=choices.has(selected)?selected:(choices.size===1?choices.keys().next().value:'');
@@ -1271,7 +1321,7 @@ function prepareBorder(baseTree,inside,outline){
  let border;
  if(placement==='svg'){
    if(!outline){
-     if($('borderOutline').disabled)throw Error('This SVG has no eligible border outline. Use a closed solid stroke with no fill or a filled ring, or choose a different border placement.');
+     if($('borderOutline').disabled)throw Error(missingOutlineMessage(designImport().borderReasons));
      throw Error('Select an outline in Add border → SVG outline.');
    }
    const C=window.ClipperLib;
