@@ -1363,3 +1363,79 @@ test('leather impression flips the stamp, border and laser references without ch
   await expect(page.locator('#designPlate')).toBeVisible();
   expect(await artworkPath.evaluate(el => el.getCTM().a)).toBeGreaterThan(0);
 });
+
+test('native-size heart patch exports a cut 3 mm beyond the filled SVG border', async ({ page }) => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="60mm" height="55mm" viewBox="0 0 60 55">
+    <path id="heart" fill="purple" fill-rule="evenodd" d="
+      M30 50 C13 40 3 29 3 17 C3 4 20 0 30 12 C40 0 57 4 57 17 C57 29 47 40 30 50 Z
+      M30 47 C15 38 5 28 5 17 C5 6 20 3 30 15 C40 3 55 6 55 17 C55 28 45 38 30 47 Z"/>
+    <path d="M20 21H37V25H25V32H20Z"/>
+  </svg>`;
+  await load(page, svg, { artSizing: 'native', width: 80, height: 64, mirror: true,
+    borderEnabled: true, borderPlacement: 'svg', laserEnabled: true });
+  await expect(page.getByRole('radio', { name: 'Use SVG size' })).toBeChecked();
+  await expect(page.locator('#borderOutline')).toHaveValue('0');
+  await page.getByRole('button', { name: '2D Design' }).click();
+  const border = page.locator('#borderPreview');
+  await expect(border).toHaveAttribute('d', /^M/);
+
+  // Production SVG paths contain line segments. Reflect the border into the
+  // leather-facing coordinates and measure against the actual cut download.
+  const borderPath = await border.getAttribute('d');
+  await generate(page);
+  expectClosedMesh(parseSTL(await download(page, '#export')));
+  await page.locator('#laserSettings > summary').click();
+  const cutSVG = (await download(page, '#laserCutDownload')).toString();
+  const cutPath = cutSVG.match(/ d="([^"]+)"/)[1];
+  const paths = path => path.split('Z').filter(Boolean).map(loop =>
+    [...loop.matchAll(/[ML](-?[\d.]+) (-?[\d.]+)/g)].map(([, x, y]) => [Number(x), Number(y)]));
+  const cutLoops = paths(cutPath);
+  expect(cutLoops).toHaveLength(1);
+  const [cut] = cutLoops;
+  const segments = paths(borderPath).flatMap(loop => loop.map(([x, y], i) => {
+    const [nextX, nextY] = loop[(i + 1) % loop.length];
+    return [[-x, y], [-nextX, nextY]];
+  }));
+  const distanceToSegment = ([x, y], [[ax, ay], [bx, by]]) => {
+    const dx = bx - ax;
+    const dy = by - ay;
+    const t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy)));
+    return Math.hypot(x - ax - t * dx, y - ay - t * dy);
+  };
+  const clearances = cut.map((point, i) => {
+    const [x, y] = cut[(i + 1) % cut.length];
+    const midpoint = [(point[0] + x) / 2, (point[1] + y) / 2];
+    return Math.min(...segments.map(segment => distanceToSegment(midpoint, segment)));
+  });
+  expect(Math.min(...clearances)).toBeGreaterThan(2.95);
+  expect(Math.max(...clearances)).toBeLessThan(3.05);
+});
+
+for (const { label, attributes, content, size } of [
+  { label: 'inches and points with a letterboxed viewBox',
+    attributes: 'width="2in" height="72pt" viewBox="10 20 100 100"',
+    content: '<rect x="10" y="20" width="100" height="100"/>', size: '25.40 × 25.40 mm' },
+  { label: 'pixels and centimeters with nested transforms and nonuniform scaling',
+    attributes: 'width="96px" height="5.08cm" viewBox="10 20 100 100" preserveAspectRatio="none"',
+    content: '<g transform="translate(60 70)"><g transform="rotate(90) scale(2 1)"><rect x="-10" y="-15" width="20" height="30"/></g></g>',
+    size: '7.62 × 20.32 mm' },
+  { label: 'unitless pixel dimensions without a viewBox',
+    attributes: 'width="96" height="48"',
+    content: '<rect width="96" height="48"/>', size: '25.40 × 12.70 mm' },
+]) {
+  test(`Use SVG size handles ${label}`, async ({ page }) => {
+    await load(page, `<svg xmlns="http://www.w3.org/2000/svg" ${attributes}>${content}</svg>`);
+    await page.getByRole('radio', { name: 'Use SVG size' }).check();
+    await expect(page.locator('#sizeSummary')).toContainText(size);
+    await generate(page);
+    const triangles = parseSTL(await download(page, '#export'));
+    expectClosedMesh(triangles);
+    const baseThickness = Number(await page.locator('#base').inputValue());
+    const relief = triangles.flat().filter(point => point[2] > baseThickness + 0.001);
+    const [width, height] = size.split(' × ').map(parseFloat);
+    for (const [axis, dimension] of [[0, width], [1, height]]) {
+      const coords = relief.map(point => point[axis]);
+      expect(Math.max(...coords) - Math.min(...coords)).toBeCloseTo(dimension, 2);
+    }
+  });
+}
