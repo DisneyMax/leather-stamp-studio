@@ -212,8 +212,9 @@
 <details class="advanced-group" id="laserSettings"><summary><span>Laser cut registration</span></summary>
 <div class="advanced-body">
 <label class="check"><input id="laserEnabled" type="checkbox"> Add registration marks to the stamp</label>
-<p class="hint">For solid debossing stamps. The cross and ring go on scrap outside the finished cut.</p>
+<p class="hint">For solid debossing stamps. Turning this on grows the backing if needed and keeps the artwork the same size. The cross and ring go on scrap outside the finished cut.</p>
 <div id="laserFields" hidden>
+<p id="laserBackingNotice" class="hint" role="status" hidden></p>
 <div class="pair">
 <div class="field"><label for="laserCutOffset">Cut offset (mm)</label><input id="laserCutOffset" type="number" min="0" max="20" step="0.1" value="3" required></div>
 <div class="field"><label for="laserMarkGap">Mark clearance (mm)</label><input id="laserMarkGap" type="number" min="0.5" max="20" step="0.1" value="2" required></div>
@@ -1407,6 +1408,61 @@ function syncLaserUI(){
  for(const id of ['laserLayoutDownload','laserCutDownload','laserReferenceDownload'])$(id).disabled=!available;
 }
 
+class LaserBackingError extends Error{
+ constructor(width,height){
+   super(`Registration marks need a rectangular backing of at least ${width} × ${height} mm at the current artwork size. Use Exact size or Use SVG size before enlarging the backing, or increase the artwork margin.`);
+   this.width=width;
+   this.height=height;
+ }
+}
+$('laserEnabled').addEventListener('change',growBackingForLaserMarks);
+function growBackingForLaserMarks(){
+ const notice=$('laserBackingNotice');
+ notice.hidden=true;
+ if(!$('laserEnabled').checked)return;
+ const [width,height,kind]=sizingBase();
+ let required;
+ try{prepareDesign();return}
+ catch(error){
+   if(!(error instanceof LaserBackingError))return;
+   required=error;
+ }
+ // Contour backings derive their footprint from the artwork and margin.
+ // A Follow base border moves the marks outward with the backing.
+ if(kind==='contour'||($('borderEnabled').checked&&$('borderPlacement').value==='base'))return;
+ const fitted=$('fitArt').checked;
+ let sizing;
+ if(fitted){
+   const {raw}=required;
+   sizing={mode:'custom',width:raw.artW,height:raw.artH};
+ }
+ let nextWidth=width,nextHeight=height;
+ while(true){
+   const w=Math.max(nextWidth,required.width),h=Math.max(nextHeight,required.height);
+   const needsCurvedClearance=w===nextWidth&&h===nextHeight;
+   nextWidth=needsCurvedClearance?Math.min(200,Math.ceil(w*1.15)):w;
+   nextHeight=needsCurvedClearance?Math.min(200,Math.ceil(h*1.15)):h;
+   if(nextWidth>200||nextHeight>200||(nextWidth===w&&nextHeight===h&&needsCurvedClearance))return;
+   try{prepareDesign(false,false,{width:nextWidth,height:nextHeight,sizing});break}
+   catch(error){
+     if(!(error instanceof LaserBackingError))return;
+     required=error;
+   }
+ }
+ $('width').value=nextWidth;
+ $('height').value=nextHeight;
+ if(fitted){
+   $('customArt').checked=true;
+   $('artWidth').value=sizing.width;
+   $('artHeight').value=sizing.height;
+   syncSizingUI();
+   syncSimpleUI();
+ }
+ notice.textContent=`Backing enlarged to ${nextWidth} × ${nextHeight} mm.`+
+   (fitted?' Switched to Exact size to keep the artwork at its current size.':'');
+ notice.hidden=false;
+}
+
 function prepareLaserRegistration(baseTree,artwork,border){
  if(isModular()||$('mode').value!=='raised')throw Error('Laser cut registration requires a solid debossing stamp.');
  if(!$('laserCutOffset').validity.valid||!$('laserMarkGap').validity.valid)
@@ -1445,7 +1501,7 @@ function prepareLaserRegistration(baseTree,artwork,border){
    const span=laserBounds(paths(marks));
    const w=Math.ceil(2*Math.max(-span.left,span.right)+1);
    const h=Math.ceil(2*Math.max(-span.bottom,span.top)+1);
-   throw Error(`Registration marks need a rectangular backing of at least ${w} × ${h} mm at the current artwork size. Use Exact size or Use SVG size before enlarging the backing, or increase the artwork margin.`);
+   throw new LaserBackingError(w,h);
  }
  return {cut,marks};
 }
@@ -1478,8 +1534,9 @@ function laserSVG(laser,kind){
 `;
 }
 
-function prepareDesign(compareOffset=false,preview=false){
- const [w,h,kind]=sizingBase();
+function prepareDesign(compareOffset=false,preview=false,trial){
+ const [width,height,kind]=sizingBase();
+ const w=trial?.width??width,h=trial?.height??height;
  const useInsert=isModular();
  const backing=useInsert
    ? ($('mode').value==='raised'?modular.insertBacking:modular.embossingBacking)
@@ -1492,8 +1549,8 @@ function prepareDesign(compareOffset=false,preview=false){
  if(accuracy<.005||accuracy>.3)throw Error('Curve accuracy must be between 0.005 and 0.3 mm.');
  if(corner<0)throw Error('Corner radius cannot be negative.');
  const shapes=designShapes();
- const sizing=$('nativeArt').checked?nativeSizing(shapes):
-   $('customArt').checked?{mode:'custom',width:getNumber('artWidth'),height:getNumber('artHeight')}:{mode:'fit'};
+ const sizing=trial?.sizing??($('nativeArt').checked?nativeSizing(shapes):
+   $('customArt').checked?{mode:'custom',width:getNumber('artWidth'),height:getNumber('artHeight')}:{mode:'fit'});
  const raw=getArtwork(shapes,w,h,margin,$('mirror').checked,sizing,kind);
  const requestedSimplify=getNumber('simplify');if(requestedSimplify<0||requestedSimplify>.5)throw Error('SVG simplification must be between 0 and 0.5 mm.');
  const selectedOutline=$('borderEnabled').checked&&$('borderPlacement').value==='svg'
@@ -1549,7 +1606,11 @@ function prepareDesign(compareOffset=false,preview=false){
    borderDesign=prepareBorder(useInsert?region(C.ClipType.ctUnion,designArea):baseTree,inside,svgOutline);
    if($('laserEnabled').checked)laser=prepareLaserRegistration(baseTree,artwork,borderDesign.border);
  }
- catch(error){if(!preview)throw error;borderError=error.message}
+ catch(error){
+   if(error instanceof LaserBackingError)error.raw={artW:raw.artW,artH:raw.artH};
+   if(!preview)throw error;
+   borderError=error.message;
+ }
  return {baseTree,inside,artwork,artP,w,h,kind,shapes,raw,optimized,effectiveTolerance,offsetMm,offset,changes,...borderDesign,borderError,laser,insertBacking:backing?modular.mesh(backing):null};
 }
 
@@ -1888,6 +1949,7 @@ function syncSimpleUI(){
 }
 ['fitArt','customArt','baseShape','edge','mode','construction'].forEach(id=>$(id).addEventListener('change',syncSimpleUI));
 $('resetDefaults').onclick=()=>{
+ $('laserBackingNotice').hidden=true;
  const defaults={...defaultPlacement,...defaultBorder,...laserDefaults,designOffset:0,construction:'solid',mode:'raised',mirror:true,width:40,height:40,base:6,depth:1.5,margin:4,curve:64,tolerance:0.035,baseShape:'rect',corner:5,edge:'sharp',bevel:0.25,simplify:0.02,lockAspect:true};
  for(const [id,value] of Object.entries(defaults)){$(id).type==='checkbox'?$(id).checked=value:$(id).value=value;}
  $('fitArt').checked=true;$('customArt').checked=false;syncSizingUI();syncSimpleUI();syncBorderUI(defaults.borderShape);$('designOffsetSlider').value=$('designOffset').value;
@@ -1911,6 +1973,7 @@ function currentSettings(){
  return settings;
 }
 function applySettings(saved){
+ $('laserBackingNotice').hidden=true;
  const settings={...defaultPlacement,...defaultBorder,...laserDefaults,designOffset:0,construction:'solid',...saved};
  if(saved.borderShape===undefined&&settings.borderPlacement==='base')settings.borderShape='match';
  $('customArt').checked=settings.artSizing==='custom';
