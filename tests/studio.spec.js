@@ -1519,3 +1519,46 @@ test('stylesheet-styled dashed strokes are skipped and solid strokes remain sele
   await generate(page);
   expectClosedMesh(parseSTL(await download(page, '#export')));
 });
+
+for (const { mode, settings, size } of [
+  { mode: 'Fit to base', settings: {}, size: '32.00 × 16.00 mm' },
+  { mode: 'Exact size', settings: { artSizing: 'custom', artWidth: 20, artHeight: 10, width: 28 }, size: '20.00 × 10.00 mm' },
+  { mode: 'Use SVG size', settings: { artSizing: 'native', baseShape: 'circle', width: 30 }, size: '20.00 × 10.00 mm' },
+]) {
+  test(`enabling registration grows the backing and preserves ${mode} artwork dimensions`, async ({ page }) => {
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="20mm" height="10mm" viewBox="0 0 20 10"><rect width="20" height="10"/></svg>';
+    await load(page, svg, settings);
+    await page.getByRole('button', { name: '2D Design' }).click();
+    await expect(page.locator('#sizeSummary')).toContainText(size);
+    const width = Number(await page.locator('#width').inputValue());
+    const preview = page.locator('#designArt');
+    await expect(preview).toHaveAttribute('d', /^M/);
+    const art = await preview.getAttribute('d');
+    const baseShape = await page.locator('#baseShape').inputValue();
+    await page.locator('#laserSettings > summary').click();
+    await page.getByRole('checkbox', { name: 'Add registration marks to the stamp' }).check();
+    await expect(page.locator('#laserBackingNotice')).toContainText('Backing enlarged');
+    expect(Number(await page.locator('#width').inputValue())).toBeGreaterThan(width);
+    await expect(page.getByRole('radio', { name: mode === 'Use SVG size' ? mode : 'Exact size' })).toBeChecked();
+    await expect(page.locator('#baseShape')).toHaveValue(baseShape);
+    await expect(page.locator('#sizeSummary')).toContainText(size);
+    await expect(preview).toHaveAttribute('d', art);
+    await expect(page.locator('#laserMarkPreview')).toHaveAttribute('d', /^M/);
+    await generate(page);
+    await expect(page.locator('#laserLayoutDownload')).toBeEnabled();
+    expectClosedMesh(parseSTL(await download(page, '#export')));
+  });
+}
+
+test('registration leaves backing and sizing alone if the marks would exceed 200 mm', async ({ page }) => {
+  await load(page, artwork('<rect width="20" height="20"/>'), { width: 200, height: 200 });
+  await page.locator('#laserSettings > summary').click();
+  await page.getByRole('checkbox', { name: 'Add registration marks to the stamp' }).check();
+  await expect(page.getByRole('radio', { name: 'Fit to base' })).toBeChecked();
+  await expect(page.locator('#width')).toHaveValue('200');
+  await expect(page.locator('#height')).toHaveValue('200');
+  await expect(page.locator('#laserBackingNotice')).toBeHidden();
+  await page.locator('#build').click();
+  await expect(page.locator('#status')).toContainText('Registration marks need a rectangular backing');
+  await expect(page.locator('#export')).toBeDisabled();
+});
