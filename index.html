@@ -104,6 +104,10 @@
 #presetName{width:100%;padding:10px;background:#1b2430;border:1px solid #394655;border-radius:8px;color:#f2f4f7;font-size:14px}
 #presetStatus{margin-bottom:0}
 #presetSettings .buttons+.field{margin-top:12px}
+#laserCutPreview{fill:none;stroke:#f2b3ff;stroke-width:1.5px;stroke-dasharray:5 4;vector-effect:non-scaling-stroke;pointer-events:none}
+#laserMarkPreview{fill:#6ddaf0;pointer-events:none}
+#laserSettings [hidden]{display:none}
+#laserSettings button{min-height:44px}
 #borderPreview{fill:#8dd4be;pointer-events:none}
 #borderPanel [hidden]{display:none}
 .size-options{border:0;padding:0;margin:0 0 10px;min-width:0}
@@ -197,6 +201,23 @@
 </div>
 </div>
 </section>
+<details class="advanced-group" id="laserSettings"><summary><span>Laser cut registration</span></summary>
+<div class="advanced-body">
+<label class="check"><input id="laserEnabled" type="checkbox"> Add registration marks to the stamp</label>
+<p class="hint">For solid debossing stamps. The cross and ring go on scrap outside the finished cut.</p>
+<div id="laserFields" hidden>
+<div class="pair">
+<div class="field"><label for="laserCutOffset">Cut offset (mm)</label><input id="laserCutOffset" type="number" min="0" max="20" step="0.1" value="3" required></div>
+<div class="field"><label for="laserMarkGap">Mark clearance (mm)</label><input id="laserMarkGap" type="number" min="0.5" max="20" step="0.1" value="2" required></div>
+</div>
+<p class="hint">Cut offset starts at the outside of the artwork and any decorative border. Mark clearance starts at the cut line and ends at the nearest mark edge.</p>
+<div class="buttons">
+<button id="laserLayoutDownload" type="button" class="secondary" disabled>Download laser layout SVG</button>
+<button id="laserCutDownload" type="button" class="secondary" disabled>Download cut SVG</button>
+<button id="laserReferenceDownload" type="button" class="secondary" disabled>Download alignment SVG</button>
+</div>
+<p class="hint">Generate a valid stamp to enable the matching SVGs. In the combined layout, red is the cut and blue is the alignment reference. Disable output for the blue marks before cutting, or use the cut-only SVG.</p>
+</div></div></details>
 <details class="advanced-group" id="advancedSettings"><summary><span>Advanced settings</span><small>Depth, artwork adjustments, and mesh detail</small></summary>
 <div class="advanced-body">
 <p class="hint">The defaults are our tested starting values. Adjust only if you need a different impression depth, clearance or edge detail.</p>
@@ -258,6 +279,8 @@
 <path id="designPlate" fill-rule="evenodd"></path>
 <path id="designArt" fill-rule="evenodd"></path>
 <path id="borderPreview" fill-rule="evenodd" aria-hidden="true"></path>
+<path id="laserCutPreview" aria-hidden="true"></path>
+<path id="laserMarkPreview" fill-rule="evenodd" aria-hidden="true"></path>
 <path id="changeAdded" fill-rule="evenodd" aria-hidden="true"></path>
 <path id="changeRemoved" fill-rule="evenodd" aria-hidden="true"></path>
 <path id="narrowFeatures" fill-rule="evenodd" aria-hidden="true"></path>
@@ -352,6 +375,7 @@ function progress(message,kind='pending'){
  if(ready.textContent!==message)ready.textContent=message;
  ready.className=kind==='ok'?'ready-ok':kind==='error'?'ready-err':'';
  syncPreviewControls();
+ syncLaserUI();
 }
 function readyToGenerate(message=''){
  const state=finalMesh?'Design changed — regenerate to download':'Ready to generate';
@@ -369,7 +393,7 @@ function showLoadError(error){showActionError('Could not load SVG: '+error.messa
 
 const sample="<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<svg id=\"Layer_1\" data-name=\"Layer 1\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 788.67 741.6\">\n  <path d=\"M385.61,303.29c90.16-6.95,119.56,74.62,167.01,130.25,32.08,37.62,75.89,66.2,99.76,110.36,59.06,109.23-23.17,224.62-145.7,192-46.75-12.45-74.77-32.92-127.41-29.39-36.32,2.44-70.22,23.51-105.23,31.29-115.91,25.75-193.26-83.78-141.26-187.56,21.76-43.42,60.6-69.09,92.23-103.64,48.92-53.45,77-136.86,160.6-143.3Z\"/>\n  <path d=\"M245.53.57c120.87-13.01,174.39,198.98,76.58,258.21-68.82,41.67-132.65-33.43-149.34-94.74-15.86-58.26-1.39-155.49,72.76-163.47Z\"/>\n  <path d=\"M520.94.57c90.1-9.2,114.51,95.52,94.88,164.92-17.28,61.08-83.19,135.55-151.05,92.37C375.97,201.36,417.52,11.13,520.94.57Z\"/>\n  <path d=\"M68.65,198.82c95.67-9.54,167.1,137.13,105.93,209.21-54.79,64.56-137.52.65-162.87-59.18-23.21-54.76-15.66-142.78,56.94-150.03Z\"/>\n  <path d=\"M702.57,198.83c77.08-7.02,98.02,72.26,80.09,133.51-17.63,60.22-93.81,135-156.89,87.41-76.63-57.82-15.65-212.5,76.8-220.92Z\"/>\n</svg>";
 const sampleFilename='paw_print.svg';
-let svgText=sample, artworkFilename=sampleFilename, finalMesh=null, holderMesh=null, scene, camera, renderer, controls, modelGroup;
+let svgText=sample, artworkFilename=sampleFilename, finalMesh=null, laserOutput=null, holderMesh=null, scene, camera, renderer, controls, modelGroup;
 try{
 scene=new THREE.Scene();scene.background=new THREE.Color('#151e28');
 camera=new THREE.PerspectiveCamera(40,1,.1,2000);camera.position.set(75,-85,95);camera.up.set(0,0,1);
@@ -961,12 +985,13 @@ function meshFaultDetails(geom,limit=8){
  const fmt=v=>v.map(x=>x.toFixed(4)).join(',');
  return bad.slice(0,limit).map(e=>`${e.faces.length} face(s): (${fmt(coords[e.a])}) - (${fmt(coords[e.b])})`).concat(degens.slice(0,limit).map(i=>`degenerate face ${i}`)).join('\n');
 }
-function buildMesh({baseTree,inside,artwork,border,borderHeight,borderEdge,insertBacking},base,depth,raised,edge,bevel,borderBevel=0){
+function buildMesh({baseTree,inside,artwork,border,borderHeight,borderEdge,insertBacking,laser},base,depth,raised,edge,bevel,borderBevel=0){
  const C=window.ClipperLib;
  // Partition the top of the base against the union of all relief.
  // Separate sharp border walls share this same base, with no bottom cap.
  const relief=border?region(C.ClipType.ctUnion,[...artwork,...paths(border)]):inside;
- const outside=region(C.ClipType.ctDifference,paths(baseTree),border?paths(relief):artwork);
+ const raisedPaths=border?paths(relief):artwork;
+ const outside=region(C.ClipType.ctDifference,paths(baseTree),laser?[...raisedPaths,...paths(laser.marks)]:raisedPaths);
  const coords=[],faces=[];
  const vert=(x,y,z)=>{coords.push(x/CS,y/CS,z);return coords.length/3-1};
  const tri=(a,b,c)=>{if(a!==b&&b!==c&&c!==a)faces.push(a,b,c)};
@@ -983,7 +1008,7 @@ function buildMesh({baseTree,inside,artwork,border,borderHeight,borderEdge,inser
      for(const p of all)vert(Math.round(p.x*CS),Math.round(p.y*CS),z);
      // Avoid collinear hole bridges when artwork and frames have aligned edges.
      const shear=loop=>loop.map(p=>new THREE.Vector2(p.x,p.y+p.x*0.001));
-     const triangles=border?THREE.ShapeUtils.triangulateShape(shear(outer),hs.map(shear))
+     const triangles=border||laser?THREE.ShapeUtils.triangulateShape(shear(outer),hs.map(shear))
        :THREE.ShapeUtils.triangulateShape(outer,hs);
      for(const [a,b,c] of triangles){const pa=all[a],pb=all[b],pc=all[c];const cross=(pb.x-pa.x)*(pc.y-pa.y)-(pb.y-pa.y)*(pc.x-pa.x);if(Math.abs(cross)<1e-12)continue;
        if((cross>0)===up)tri(offset+a,offset+b,offset+c);else tri(offset+a,offset+c,offset+b);
@@ -1106,6 +1131,7 @@ function buildMesh({baseTree,inside,artwork,border,borderHeight,borderEdge,inser
  }
  if(raised){
    cap(outside,base,true);
+   if(laser)raisedRelief(laser.marks,paths(laser.marks),Math.max(depth,borderHeight??0),'sharp',0);
    const separateBorder=border&&(edge!=='sharp'||borderEdge!=='sharp'||borderHeight!==depth);
    if(separateBorder)raisedRelief(border,paths(border),borderHeight,borderEdge,borderBevel,true);
    raisedRelief(separateBorder?inside:relief,artwork,depth,edge,bevel);
@@ -1268,6 +1294,85 @@ function prepareBorder(baseTree,inside,outline){
  return {border,borderHeight,borderEdge,borderEdgeSize,borderThickness:thickness};
 }
 
+const laserDefaults={laserEnabled:false,laserCutOffset:3,laserMarkGap:2};
+function syncLaserUI(){
+ const enabled=$('laserEnabled').checked;
+ $('laserFields').hidden=!enabled;
+ const available=enabled&&laserOutput&&!$('export').disabled;
+ for(const id of ['laserLayoutDownload','laserCutDownload','laserReferenceDownload'])$(id).disabled=!available;
+}
+
+function prepareLaserRegistration(baseTree,artwork,border){
+ if(isModular()||$('mode').value!=='raised')throw Error('Laser cut registration requires a solid debossing stamp.');
+ if(!$('laserCutOffset').validity.valid||!$('laserMarkGap').validity.valid)
+   throw Error('Enter a cut offset of 0–20 mm and mark clearance of 0.5–20 mm.');
+ const C=window.ClipperLib;
+ const printed=[...artwork,...(border?paths(border):[])];
+ // Fill holes for the exterior cut, including the opening in a decorative border.
+ const contours=rings(region(C.ClipType.ctUnion,printed)).filter(ring=>!ring.hole).map(ring=>ring.path);
+ const silhouette=paths(region(C.ClipType.ctUnion,contours));
+ const cutOffset=getNumber('laserCutOffset');
+ let cut=silhouette;
+ if(cutOffset>0){
+   const offset=new C.ClipperOffset(2,0.02*CS),expanded=[];
+   offset.AddPaths(silhouette,C.JoinType.jtRound,C.EndType.etClosedPolygon);
+   offset.Execute(expanded,cutOffset*CS);
+   cut=rings(region(C.ClipType.ctUnion,expanded)).filter(ring=>!ring.hole).map(ring=>ring.path);
+ }
+ if(cut.length!==1)throw Error('The laser cut needs one outer contour. Increase the cut offset or add a border around separate artwork.');
+ const {left,right,bottom,top}=laserBounds(cut);
+ const radius=1.5,arm=0.4,gap=getNumber('laserMarkGap');
+ const x=left-gap-radius,y=(bottom+top)/2,ringX=right+gap+radius;
+ const circle=(r)=>xyPath(Array.from({length:32},(_,i)=>{
+   const angle=i*2*Math.PI/32;
+   return {x:ringX+r*Math.cos(angle),y:y+r*Math.sin(angle)};
+ }));
+ const marks=region(C.ClipType.ctUnion,[
+   rectPath(x-radius,y-arm,x+radius,y+arm),rectPath(x-arm,y-radius,x+arm,y+radius),
+   circle(radius),circle(radius-0.8).reverse(),
+ ]);
+ const plate=paths(baseTree);
+ // Leave room for the marks to join the base without touching its walls.
+ const inset=new C.ClipperOffset(2,0.02*CS),bearing=[];
+ inset.AddPaths(plate,C.JoinType.jtRound,C.EndType.etClosedPolygon);
+ inset.Execute(bearing,-0.5*CS);
+ if(paths(region(C.ClipType.ctDifference,paths(marks),bearing)).length){
+   const span=laserBounds(paths(marks));
+   const w=Math.ceil(2*Math.max(-span.left,span.right)+1);
+   const h=Math.ceil(2*Math.max(-span.bottom,span.top)+1);
+   throw Error(`Registration marks need a rectangular backing of at least ${w} × ${h} mm at the current artwork size. Use Exact size or Use SVG size before enlarging the backing, or increase the artwork margin.`);
+ }
+ return {cut,marks};
+}
+
+function laserBounds(loops){
+ const bounds={left:Infinity,right:-Infinity,bottom:Infinity,top:-Infinity};
+ for(const loop of loops)for(const {X,Y} of loop){
+   bounds.left=Math.min(bounds.left,X/CS);
+   bounds.right=Math.max(bounds.right,X/CS);
+   bounds.bottom=Math.min(bounds.bottom,Y/CS);
+   bounds.top=Math.max(bounds.top,Y/CS);
+ }
+ return bounds;
+}
+
+function laserSVG(laser,kind){
+ const marks=paths(laser.marks);
+ const {left,right,bottom,top}=laserBounds([...laser.cut,...marks]);
+ const padding=1;
+ const width=right-left+2*padding,height=top-bottom+2*padding;
+ // Turn the stamp face over for the leather-facing view.
+ const leatherPath=loops=>svgPath(loops.map(loop=>loop.map(({X,Y})=>({X:-X,Y}))));
+ const combined=kind==='layout';
+ const cutPath=`<path fill="none" stroke="${combined?'#ff0000':'black'}" stroke-width="0.1" d="${leatherPath(laser.cut)}"/>`;
+ const referencePath=`<path fill="${combined?'#0000ff':'black'}" fill-rule="evenodd" d="${leatherPath(marks)}"/>`;
+ const content=combined
+   ?`<desc>Red: cut path. Blue: alignment reference only. Disable blue output before cutting.</desc><g id="cut"><title>Cut</title>${cutPath}</g><g id="alignment-reference"><title>Alignment reference</title>${referencePath}</g>`
+   :kind==='reference'?referencePath:cutPath;
+ return `<svg xmlns="http://www.w3.org/2000/svg" width="${width.toFixed(4)}mm" height="${height.toFixed(4)}mm" viewBox="${(-right-padding).toFixed(4)} ${(-top-padding).toFixed(4)} ${width.toFixed(4)} ${height.toFixed(4)}">${content}</svg>
+`;
+}
+
 function prepareDesign(compareOffset=false,preview=false){
  const [w,h,kind]=sizingBase();
  const useInsert=isModular();
@@ -1330,14 +1435,17 @@ function prepareDesign(compareOffset=false,preview=false){
      removed:before.length?paths(region(C.ClipType.ctDifference,before,artwork)):[]
    };
  }
- let borderDesign,borderError;
+ let borderDesign,borderError,laser;
  const svgOutline=selectedOutline?(selectedOutline.points
    ?{centerline:placeArtworkPaths([xyPath(selectedOutline.points.map(raw.sizePoint))],x,y,rotation)[0]}
    :{ring:placeArtworkPaths(shapeLoops(raw.transformed[shapes.findIndex(shape=>shape.outline===selectedOutline)],3),x,y,rotation)})
    :null;
- try{borderDesign=prepareBorder(useInsert?region(C.ClipType.ctUnion,designArea):baseTree,inside,svgOutline)}
+ try{
+   borderDesign=prepareBorder(useInsert?region(C.ClipType.ctUnion,designArea):baseTree,inside,svgOutline);
+   if($('laserEnabled').checked)laser=prepareLaserRegistration(baseTree,artwork,borderDesign.border);
+ }
  catch(error){if(!preview)throw error;borderError=error.message}
- return {baseTree,inside,artwork,artP,w,h,kind,shapes,raw,optimized,effectiveTolerance,offsetMm,offset,changes,...borderDesign,borderError,insertBacking:backing?modular.mesh(backing):null};
+ return {baseTree,inside,artwork,artP,w,h,kind,shapes,raw,optimized,effectiveTolerance,offsetMm,offset,changes,...borderDesign,borderError,laser,insertBacking:backing?modular.mesh(backing):null};
 }
 
 function svgPath(loops){
@@ -1386,8 +1494,10 @@ $('minimumFeature').addEventListener('input',scheduleDesignPreview);
 let dragSource, artworkDrag;
 function renderDesignPreview(){
  try{
-   const {baseTree,artwork,artP,raw,offset,changes,border,borderHeight,borderError}=prepareDesign($('showChanges').checked,true);
+   const {baseTree,artwork,artP,raw,offset,changes,border,borderHeight,borderError,laser}=prepareDesign($('showChanges').checked,true);
    $('borderPreview').setAttribute('d',svgPath(border?paths(border):[]));
+   $('laserCutPreview').setAttribute('d',svgPath(laser?.cut??[]));
+   $('laserMarkPreview').setAttribute('d',svgPath(laser?paths(laser.marks):[]));
    drawThicknessChanges(changes,true);
    drawFeatureCheck(artwork);
    showPrintabilityNote(offset);
@@ -1396,7 +1506,7 @@ function renderDesignPreview(){
    const holderOutline=isModular()?[rectPath(-modular.holderCenterX,-modular.holderCenterX,modular.holderCenterX,modular.holderCenterX)]:[];
    $('designHolder').setAttribute('d',svgPath(holderOutline));
    let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
-   for(const loop of [...plate,...holderOutline])for(const {X,Y} of loop){
+   for(const loop of [...plate,...holderOutline,...(laser?.cut??[])])for(const {X,Y} of loop){
      minX=Math.min(minX,X/CS); maxX=Math.max(maxX,X/CS);
      minY=Math.min(minY,-Y/CS); maxY=Math.max(maxY,-Y/CS);
    }
@@ -1409,9 +1519,11 @@ function renderDesignPreview(){
    renderedSVG=svgText;
    $('designView').classList.remove('show-last-design');
    const type=$('mode').value==='raised'?'Raised artwork':'Recessed artwork';
-   $('designStatus').textContent=borderError??`${type} in gold · Base in blue-gray${border?` · Border in green (${borderHeight} mm high)`:''} · Drag artwork to move`;
+   $('designStatus').textContent=borderError??`${type} in gold · Base in blue-gray${border?` · Border in green (${borderHeight} mm high)`:''}${laser?' · Laser cut dashed pink · Marks in cyan':''} · Drag artwork to move`;
  }catch(error){
    $('borderPreview').removeAttribute('d');
+   $('laserCutPreview').removeAttribute('d');
+   $('laserMarkPreview').removeAttribute('d');
    $('designHolder').removeAttribute('d');
    drawThicknessChanges(undefined,false);
    drawFeatureCheck();
@@ -1624,6 +1736,7 @@ function build(){try{
    }
  }
  setMeshAttemptLog(attemptLog.join('\n'));
+ laserOutput=issues?null:design.laser;
  status.className=issues?'bad':'good';$('export').disabled=!!issues;progress(issues?'Error — see details':'Ready to export',issues?'error':'ok');
  showPrintabilityNote(design.offset);
  }catch(e){showActionError('Generation failed: '+e.message);console.error(e)}finally{$('build').disabled=false}}
@@ -1653,7 +1766,7 @@ function syncSimpleUI(){
 }
 ['fitArt','customArt','baseShape','edge','mode','construction'].forEach(id=>$(id).addEventListener('change',syncSimpleUI));
 $('resetDefaults').onclick=()=>{
- const defaults={...defaultPlacement,...defaultBorder,designOffset:0,construction:'solid',mode:'raised',mirror:true,width:40,height:40,base:6,depth:1.5,margin:4,curve:64,tolerance:0.035,baseShape:'rect',corner:5,edge:'sharp',bevel:0.25,simplify:0.02,lockAspect:true};
+ const defaults={...defaultPlacement,...defaultBorder,...laserDefaults,designOffset:0,construction:'solid',mode:'raised',mirror:true,width:40,height:40,base:6,depth:1.5,margin:4,curve:64,tolerance:0.035,baseShape:'rect',corner:5,edge:'sharp',bevel:0.25,simplify:0.02,lockAspect:true};
  for(const [id,value] of Object.entries(defaults)){$(id).type==='checkbox'?$(id).checked=value:$(id).value=value;}
  $('fitArt').checked=true;$('customArt').checked=false;syncSizingUI();syncSimpleUI();syncBorderUI(defaults.borderShape);$('designOffsetSlider').value=$('designOffset').value;
  $('export').disabled=true;status.className='';status.textContent='Recommended settings restored. Click Generate 3D stamp.';
@@ -1667,7 +1780,7 @@ $('designOffset').addEventListener('input',()=>{
 $('designOffsetSlider').addEventListener('input',()=>{
  $('designOffset').value=Number($('designOffsetSlider').value).toFixed(2);
 });
-const settingIds=['construction',...Object.keys(defaultPlacement),...Object.keys(defaultBorder),'designOffset','mode','mirror','width','height','base','depth','margin','curve','tolerance','baseShape','corner','edge','bevel','simplify','artWidth','artHeight','lockAspect'];
+const settingIds=['construction',...Object.keys(defaultPlacement),...Object.keys(defaultBorder),...Object.keys(laserDefaults),'designOffset','mode','mirror','width','height','base','depth','margin','curve','tolerance','baseShape','corner','edge','bevel','simplify','artWidth','artHeight','lockAspect'];
 function download(data,name,type){const url=URL.createObjectURL(new Blob([data],{type}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),2500)}
 function currentSettings(){
  const settings={};
@@ -1676,7 +1789,7 @@ function currentSettings(){
  return settings;
 }
 function applySettings(saved){
- const settings={...defaultPlacement,...defaultBorder,designOffset:0,construction:'solid',...saved};
+ const settings={...defaultPlacement,...defaultBorder,...laserDefaults,designOffset:0,construction:'solid',...saved};
  if(saved.borderShape===undefined&&settings.borderPlacement==='base')settings.borderShape='match';
  $('customArt').checked=settings.artSizing==='custom';
  $('nativeArt').checked=settings.artSizing==='native';
@@ -1799,5 +1912,16 @@ function stlFilename(){
  return `${artworkName}_${impression}_${edge}_${shape}.stl`;
 }
 $('export').onclick=()=>{if(!finalMesh||$('export').disabled)return;try{const exporter=new STLExporter();const output=exporter.parse(finalMesh,{binary:true});download(output,stlFilename(),'model/stl')}catch(e){showActionError('STL export failed: '+e.message)}};
+for(const [id,suffix,kind] of [
+ ['laserLayoutDownload','laser_layout','layout'],
+ ['laserCutDownload','laser_cut','cut'],
+ ['laserReferenceDownload','laser_alignment','reference'],
+]){
+ $(id).onclick=()=>{
+   if($(id).disabled||!laserOutput)return;
+   download(laserSVG(laserOutput,kind),stlFilename().replace(/\.stl$/, `_${suffix}.svg`),'image/svg+xml');
+ };
+}
 syncSizingUI();
+syncLaserUI();
 </script></body></html>

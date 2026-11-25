@@ -62,3 +62,10 @@ npm test
 ```
 
 Tests use local copies of the pinned browser libraries. Set `LEATHER_STAMP_CHROMIUM` to an existing Chromium executable if needed. GitHub Actions runs the polygon tests and Playwright suite on pull requests.
+
+
+## Laser cut registration
+
+For a **solid debossing stamp**, open **Laser cut registration** and turn on **Add registration marks to the stamp**. The default cut runs 3 mm outside the artwork or its decorative border. A cross and ring go on opposite sides, with at least 2 mm between the cut and the nearest edge of either mark. Both marks rise to the tallest relief so they can print into the scrap. If the backing is too small, use **Exact size** or **Use SVG size** before increasing the backing dimensions, or increase the artwork margin.
+
+Check the dashed cut and cyan marks in **2D Design**. Generate the stamp and download its STL. **Download laser layout SVG** keeps the cut and alignment marks together on a shared millimeter canvas in the leather-facing orientation. Align the blue cross and ring to the stamped marks, disable output for the blue alignment group, and send only the red cut path to the laser. SVG groups and colors do not control laser output by themselves. The separate cut and alignment SVGs are also available. When importing them separately, preserve scale and restore their shared origin if your laser software centers each import. The first pass supports one exterior contour, without cuts through interior holes. Check kerf and alignment on leather offcuts before cutting a finished piece.
