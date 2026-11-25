@@ -505,6 +505,48 @@ function strokeOutlines(path,style,viewport,scale,C){
  }
  return loops;
 }
+// SVGLoader parses SVG in a detached document, where style elements have no
+// stylesheet. Resolve simple class and ID rules there without mounting SVG.
+function applySvgStrokeStyles(doc){
+ const styles=doc.querySelectorAll('style');
+ if(!styles.length)return false;
+ const properties=['fill','stroke','stroke-width','stroke-opacity','stroke-dasharray'];
+ const rules=[];
+ const sheet=new CSSStyleSheet();
+ for(const style of styles){
+   sheet.replaceSync(style.textContent);
+   for(const rule of sheet.cssRules){
+     if(rule.type!==CSSRule.STYLE_RULE)continue;
+     const selectors=rule.selectorText.split(',').map(value=>value.trim());
+     if(!selectors.every(selector=>/^[.#]-?[_a-zA-Z][\w-]*$/.test(selector)))continue;
+     const declarations=properties.flatMap(property=>{
+       const value=rule.style.getPropertyValue(property);
+       return value?[[property,value,rule.style.getPropertyPriority(property)]]:[];
+     });
+     if(!declarations.length)continue;
+     for(const selector of selectors)rules.push({selector,declarations,specificity:selector[0]==='#'?2:1});
+   }
+ }
+ // Stable sort preserves stylesheet order for selectors of equal specificity.
+ rules.sort((a,b)=>a.specificity-b.specificity);
+ const winningStyles=new Map();
+ for(const {selector,declarations} of rules){
+   for(const node of doc.querySelectorAll(selector)){
+     if(!node.style)continue;
+     const winners=winningStyles.get(node)??new Map();
+     for(const [property,value,priority] of declarations){
+       if(!priority&&(node.style.getPropertyValue(property)||winners.get(property)?.priority))continue;
+       if(node.style.getPropertyPriority(property))continue;
+       winners.set(property,{value,priority});
+     }
+     if(winners.size)winningStyles.set(node,winners);
+   }
+ }
+ for(const [node,winners] of winningStyles){
+   for(const [property,{value,priority}] of winners)node.style.setProperty(property,value,priority);
+ }
+ return winningStyles.size>0;
+}
 // Preserve compound-path topology: holes, nested islands, and letter counters.
 // SVGLoader.createShapes can misclassify nested subpaths in Illustrator compound paths.
 function normalizeShapes(text){
@@ -513,7 +555,8 @@ function normalizeShapes(text){
  if(!window.ClipperLib)throw Error('The polygon library could not load. Connect to the internet and reopen this HTML file.');
  const loader=new SVGLoader();
  loader.defaultDPI=96;
- const data=loader.parse(text),C=window.ClipperLib,scale=1000;
+ const source=applySvgStrokeStyles(document)?new XMLSerializer().serializeToString(document):text;
+ const data=loader.parse(source),C=window.ClipperLib,scale=1000;
  const clip=viewport?rectPath(...viewport.bounds,scale):null;
  const shapes=[],skipped=new Set(),borderReasons=new Set();
  if([...document.querySelectorAll('text')].some(node=>node.textContent.trim()&&
@@ -535,9 +578,11 @@ function normalizeShapes(text){
   const node=path.userData?.node;
   const paintedStroke=style.stroke&&style.stroke!=='none'&&style.strokeOpacity!==0&&style.strokeWidth>0;
   let dash;
-  if(paintedStroke)for(let element=node;element&&!dash;element=element.parentElement)
-    dash=(element.style?.strokeDasharray||element.getAttribute('stroke-dasharray'))?.trim();
-  const dashed=dash&&dash!=='none';
+  if(paintedStroke)for(let element=node;element&&!dash;element=element.parentElement){
+    const value=(element.style?.strokeDasharray||element.getAttribute('stroke-dasharray'))?.trim();
+    if(value!=='inherit'&&value!=='unset')dash=value;
+  }
+  const dashed=dash&&dash!=='none'&&dash!=='initial';
   if(dashed){
    skipped.add('Dashed strokes were skipped. Convert them to filled outlines in your SVG editor.');
    borderReasons.add('Dashed strokes cannot be used as outlines.');
