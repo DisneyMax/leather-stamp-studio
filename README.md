@@ -64,6 +64,10 @@ npm test
 Tests use local copies of the pinned browser libraries. Set `LEATHER_STAMP_CHROMIUM` to an existing Chromium executable if needed. GitHub Actions runs the polygon tests and Playwright suite on pull requests.
 
 
+## Leather impression preview
+
+In **2D Design**, turn on **Approximate leather impression** to check how the artwork and border read on the leather. The view flips the stamp face, shades recessed and raised designs differently, and shows any laser marks and cut line in the same orientation as the laser SVG. Switch back to the stamp view to drag the artwork. The preview illustrates shape and orientation. Leather, pressure, and finishing affect the actual result.
+
 ## Laser cut registration
 
 For a **solid debossing stamp**, open **Laser cut registration** and turn on **Add registration marks to the stamp**. The default cut runs 3 mm outside the artwork or its decorative border. A cross and ring go on opposite sides, with at least 2 mm between the cut and the nearest edge of either mark. Both marks rise to the tallest relief so they can print into the scrap. If the backing is too small, use **Exact size** or **Use SVG size** before increasing the backing dimensions, or increase the artwork margin.

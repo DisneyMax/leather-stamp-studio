@@ -1326,3 +1326,40 @@ test('laser registration explains required backing and rejects modular stamps', 
   await expect(page.locator('#status')).toContainText('Laser cut registration requires a solid debossing stamp.');
   await expect(page.locator('#export')).toBeDisabled();
 });
+
+test('leather impression flips the stamp, border and laser references without changing exports', async ({ page }) => {
+  await load(page, artwork('<path d="M0 0H12V4H5V10H0Z"/>'), {
+    artSizing: 'custom', artWidth: 20, artHeight: 16, width: 70, height: 50, artX: 3,
+    borderEnabled: true, borderShape: 'rect', laserEnabled: true, mirror: true,
+  });
+  await generate(page);
+  await page.locator('#laserSettings > summary').click();
+  const priorCut = await download(page, '#laserCutDownload');
+  await page.getByRole('button', { name: '2D Design' }).click();
+  const artworkPath = page.locator('#designArt');
+  await expect(artworkPath).toHaveAttribute('d', /^M/);
+  const before = await artworkPath.getAttribute('d');
+  const toggle = page.getByRole('checkbox', { name: 'Approximate leather impression' });
+  await toggle.press('Space');
+  await expect(page.locator('#designGeometry')).toHaveAttribute('transform', 'scale(-1 1)');
+  await expect(page.locator('#designView')).toHaveAttribute('data-impression', 'recessed');
+  await expect(page.locator('#designStatus')).toContainText('Recessed impression (debossing)');
+  await expect(page.locator('#designPlate')).toBeHidden();
+  for (const id of ['designArt', 'borderPreview', 'laserCutPreview', 'laserMarkPreview']) {
+    const path = page.locator('#' + id);
+    await expect(path).toHaveAttribute('d', /^M/);
+    expect(await path.evaluate(el => el.getCTM().a)).toBeLessThan(0);
+  }
+  await expect(artworkPath).toHaveAttribute('d', before);
+  await expect(page.locator('#export')).toBeEnabled();
+  expect(await download(page, '#laserCutDownload')).toEqual(priorCut);
+
+  await page.locator('#laserEnabled').uncheck();
+  await page.locator('#borderEnabled').uncheck();
+  await page.locator('#mode').selectOption('recessed');
+  await expect(page.locator('#designStatus')).toContainText('Raised impression (embossing)');
+  await expect(page.locator('#designView')).toHaveAttribute('data-impression', 'raised');
+  await toggle.uncheck();
+  await expect(page.locator('#designPlate')).toBeVisible();
+  expect(await artworkPath.evaluate(el => el.getCTM().a)).toBeGreaterThan(0);
+});
