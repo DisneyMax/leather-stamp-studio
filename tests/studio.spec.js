@@ -1495,3 +1495,27 @@ test('an SVG with only live text explains how to make usable artwork and blocks 
   await expect(page.locator('#status')).toContainText('No visible vector shapes found.');
   await expect(page.locator('#export')).toBeDisabled();
 });
+
+test('stylesheet-styled dashed strokes are skipped and solid strokes remain selectable', async ({ page }) => {
+  const lettering = '<path d="M12 12H20V15H15V20H12Z"/>';
+  const heart = 'M16 29C5 22 2 15 4 9C6 3 13 3 16 8C19 3 26 3 28 9C30 15 27 22 16 29Z';
+  await load(page, artwork(lettering));
+  const preview = page.locator('#designArt');
+  await expect(preview).toHaveAttribute('d', /^M/);
+  const letteringOnly = await preview.getAttribute('d');
+
+  const styles = '<style>.heart { fill: none; stroke: red } .dashed { stroke-dasharray: 2 1 } .solid { stroke-dasharray: none }</style>';
+  const settings = { borderEnabled: true, borderPlacement: 'svg' };
+  await load(page, artwork(styles + '<g class="dashed"><path class="heart" d="' + heart + '"/></g>' + lettering), settings);
+  await page.getByRole('button', { name: '2D Design' }).click();
+  await expect(page.locator('#svgImportNotice')).toContainText('Dashed strokes were skipped');
+  await expect(preview).toHaveAttribute('d', letteringOnly);
+  await expect(page.locator('#borderOutline')).toBeDisabled();
+
+  await load(page, artwork(styles + '<g class="dashed"><path id="heart" class="solid heart" d="' + heart + '"/></g>' + lettering), settings);
+  await expect(page.locator('#svgImportNotice')).toBeHidden();
+  await expect(page.locator('#borderOutline')).toHaveValue('0');
+  await expect(page.locator('#borderPreview')).toHaveAttribute('d', /^M/);
+  await generate(page);
+  expectClosedMesh(parseSTL(await download(page, '#export')));
+});
